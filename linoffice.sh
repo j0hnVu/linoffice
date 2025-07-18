@@ -725,13 +725,15 @@ function waRunCommand() {
 
     # Run option.
     if [ -z "$1" ]; then
-        printf "Possible commands:\n\n"
-        printf "%-40s -> %s\n" "./linoffice.sh windows" "shows the whole Windows desktop in an RDP session"
-        printf "%-40s -> %s\n" "./linoffice.sh manual explorer.exe" "runs a specific Windows app, in this example explorer.exe (other useful examples: regedit.exe, powershell.exe)"
-        printf "%-40s -> %s\n" "./linoffice.sh update" "runs an update script for Windows in Powershell"
-        printf "%-40s -> %s\n" "./linoffice.sh reset" "kills all FreeRDP processes, cleans up Office lock files, and reboots the Windows VM"
-        printf "%-40s -> %s\n" "./linoffice.sh cleanup [--full|--reset]" "cleans up Office lock files (such as ~$file.xlsx) in the home folder and removable media; --full cleans all files regardless of creation date, --reset resets the last cleanup timestamp"
-        printf "%-40s -> %s\n" "./linoffice.sh excel" "runs a predefined app, in this example Excel (available options: excel, word, powerpoint, onenote, outlook)"
+        printf "Possible commands:\n"
+        printf "\033[1m./linoffice.sh [excel|word|powerpoint|onenote|outlook]\033[0m -> runs one of the predefined Office applications\n"
+        printf "\033[1m./linoffice.sh manual [msaccess.exe|mspub.exe]\033[0m -> run Microsoft Access or Microsoft Publisher, if installed (they are not part of the default Office version installed by LinOffice)\n"
+        printf "\033[1m./linoffice.sh manual [explorer.exe|regedit.exe|powershell.exe|cmd.exe]\033[0m -> runs a specific Windows app in the Windows PATH\n"
+        printf "\033[1m./linoffice.sh manual \"C:\\\\Program Files\\\\Microsoft Office\\\\root\\\\Office16\\\\SETLANG.EXE\"\033[0m -> like above, but for any application (here: Microsoft Office Language Preferences tool)\n"
+        printf "\033[1m./linoffice.sh windows\033[0m -> shows the whole Windows desktop in an RDP session\n"
+        printf "\033[1m./linoffice.sh update\033[0m -> runs an update script for Windows in Powershell\n"
+        printf "\033[1m./linoffice.sh reset\033[0m -> kills all FreeRDP processes, cleans up Office lock files, and reboots the Windows VM\n"
+        printf "\033[1m./linoffice.sh cleanup [--full|--reset]\033[0m -> cleans up Office lock files (such as ~\$file.xlsx) in the home folder and removable media; --full cleans all files regardless of creation date, --reset resets the last cleanup timestamp\n"
         exit 0
     fi
 
