@@ -153,8 +153,9 @@ You can open files from your file manager with Right-click -> Open with.
 
 ### In the terminal
 - `./linoffice.sh [excel|word|powerpoint|onenote|outlook]`: runs one of the predefined Office applications
+- `./linoffice.sh manual [msaccess.exe|mspub.exe]`: run Microsoft Access or Microsoft Publisher, if installed (they are not part of the default Office version installed by LinOffice)
 - `./linoffice.sh manual [explorer.exe|regedit.exe|powershell.exe|cmd.exe]`: runs a specific Windows app in the Windows PATH
-- `./linoffice.sh manual "C:\Program Files\Microsoft Office\root\Office16\MSACCESS.EXE"`: like above, but for any application (here: Microsoft Access)
+- `./linoffice.sh manual "C:\Program Files\Microsoft Office\root\Office16\SETLANG.EXE"`: like above, but for any application (here: Microsoft Office Language Preferences tool)
 - `./linoffice.sh windows`:  shows the whole Windows desktop in an RDP session
 - `./linoffice.sh update`: runs an update script for Windows in Powershell
 - `./linoffice.sh reset`: kills all FreeRDP processes, cleans up Office lock files, and reboots the Windows VM
