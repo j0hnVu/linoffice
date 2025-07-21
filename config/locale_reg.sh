@@ -73,10 +73,6 @@ create_registry_content() {
         [ -n "$DATE_SEP" ] && echo "\"sDate\"=\"$DATE_SEP\""
         echo "\"sTimeFormat\"=\"HH:mm:ss\""
         echo "\"iMeasure\"=\"0\""
-        echo
-        echo "[${hive}\\Software\\Microsoft\\Office\\16.0\\Common\\ExperimentConfigs\\Ecs]"
-        echo "; This setting is used to enable Office download for restricted countries"
-        echo "\"CountryCode\"=\"std::wstring|US\""
     } >> "$TEMP_FILE"
 }
 
