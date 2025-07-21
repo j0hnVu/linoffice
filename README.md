@@ -127,6 +127,10 @@ Unfortunately it is not allowed to redistribute Microsoft software, otherwise I 
 
 </details>
 
+### Updating
+
+Once you have set up the VM using the `setup.sh`, the only thing that can really be updated is the the main script, `linoffice.sh`. Just download the newest version and replace the old script with it (and don't forget to make the new script executable). FreeRDP and Podman should receive updates from your package manager. Windows and Office should automatically receive updates, or you can run `./linoffice.sh update` to check for updates.
+
 ### Uninstall
 
 You can run the `uninstall.sh` to remove everything.
