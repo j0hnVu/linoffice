@@ -21,6 +21,10 @@ if (Test-Path "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE") {
     exit 0
 }
 
+Write-Log "Creating registry key to avoid download failing in restricted countries"
+New-Item -Path "HKCU:\Software\Microsoft\Office\16.0\Common\ExperimentConfigs\Ecs" -Force
+New-ItemProperty -Path "HKCU:\Software\Microsoft\Office\16.0\Common\ExperimentConfigs\Ecs" -Name "CountryCode" -Value "std::wstring|US" -PropertyType String -Force
+
 # Download Office Deployment Tool setup.exe
 $setupPath = "C:\OEM\setup.exe"
 Write-Log "Checking for setup.exe"
