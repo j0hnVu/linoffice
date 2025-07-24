@@ -774,14 +774,18 @@ function check_available() {
             # For now, credentials and IP/port are hardcoded for simplicity, make sure they match what is in the compose.yaml and linoffice.conf
             echo "DEBUG: Using FreeRDP command: $FREERDP_COMMAND" >> "$LOGFILE"
             local freerdp_output
-            freerdp_output=$(timeout 30 "$FREERDP_COMMAND" \
-                /cert:ignore \
-                /u:MyWindowsUser \
-                /p:MyWindowsPassword \
-                /v:127.0.0.1 \
-                /port:3388 \
-                /app:program:cmd.exe,cmd:'/c tsdiscon' \
-                2>&1)
+            if [[ "$FREERDP_COMMAND" == flatpak* ]]; then
+                freerdp_output=$(timeout 30 bash -c "$FREERDP_COMMAND /cert:ignore /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:cmd.exe,cmd:'/c tsdiscon'" 2>&1)
+            else
+                freerdp_output=$(timeout 30 "$FREERDP_COMMAND" \
+                    /cert:ignore \
+                    /u:MyWindowsUser \
+                    /p:MyWindowsPassword \
+                    /v:127.0.0.1 \
+                    /port:3388 \
+                    /app:program:cmd.exe,cmd:'/c tsdiscon' \
+                    2>&1)
+            fi
             echo "DEBUG: FreeRDP output was:" >> "$LOGFILE"
             echo "$freerdp_output" >> "$LOGFILE"
             echo "DEBUG: FreeRDP exit code was: $freerdp_exit" >> "$LOGFILE"
@@ -855,15 +859,19 @@ function check_success() {
         rm -f "$SUCCESS_FILE"
         
         # Start FreeRDP in the background with home-drive enabled
-        timeout $connection_timeout "$FREERDP_COMMAND" \
-            /cert:ignore \
-            +home-drive \
-            /u:MyWindowsUser \
-            /p:MyWindowsPassword \
-            /v:127.0.0.1 \
-            /port:3388 \
-            /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\FirstRDPRun.ps1' \
-            >>"$LOGFILE" 2>&1 &
+        if [[ "$FREERDP_COMMAND" == flatpak* ]]; then
+            timeout $connection_timeout bash -c "$FREERDP_COMMAND /cert:ignore +home-drive /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\FirstRDPRun.ps1'" >>"$LOGFILE" 2>&1 &
+        else
+            timeout $connection_timeout "$FREERDP_COMMAND" \
+                /cert:ignore \
+                +home-drive \
+                /u:MyWindowsUser \
+                /p:MyWindowsPassword \
+                /v:127.0.0.1 \
+                /port:3388 \
+                /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\FirstRDPRun.ps1' \
+                >>"$LOGFILE" 2>&1 &
+        fi
         
         freerdp_pid=$!
         
@@ -1050,15 +1058,19 @@ run_install_office_ps1() {
     print_info "Running Office installation script via FreeRDP..."
     local connection_timeout=120
     # Run FreeRDP command once, no retries
-    timeout $connection_timeout "$FREERDP_COMMAND" \
-        /cert:ignore \
-        +home-drive \
-        /u:MyWindowsUser \
-        /p:MyWindowsPassword \
-        /v:127.0.0.1 \
-        /port:3388 \
-        /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\InstallOffice.ps1' \
-        >>"$LOGFILE" 2>&1
+    if [[ "$FREERDP_COMMAND" == flatpak* ]]; then
+        timeout $connection_timeout bash -c "$FREERDP_COMMAND /cert:ignore +home-drive /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\InstallOffice.ps1'" >>"$LOGFILE" 2>&1
+    else
+        timeout $connection_timeout "$FREERDP_COMMAND" \
+            /cert:ignore \
+            +home-drive \
+            /u:MyWindowsUser \
+            /p:MyWindowsPassword \
+            /v:127.0.0.1 \
+            /port:3388 \
+            /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\InstallOffice.ps1' \
+            >>"$LOGFILE" 2>&1
+    fi
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
         print_success "Office installation script executed successfully via FreeRDP."
