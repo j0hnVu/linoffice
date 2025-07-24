@@ -1107,7 +1107,7 @@ if [ "$DESKTOP_ONLY" = true ]; then
     exit 0
 fi
 
-# If --firstrun is set, remove the office_installed progress marker to force steps 20 and 21
+# If --firstrun is set, remove the office_installed progress marker
 if [ "$FIRSTRUN" = true ]; then
     print_info "--firstrun specified: Forcing RDP and Office install checks."
     if [ -f "$PROGRESS_FILE" ]; then
