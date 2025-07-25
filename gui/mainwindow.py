@@ -1,12 +1,14 @@
 # This Python file uses the following encoding: utf-8
 import sys
-from PySide6.QtWidgets import QApplication, QWidget, QMainWindow
+from PySide6.QtWidgets import QApplication, QWidget, QMainWindow, QMessageBox
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QTimer
 import subprocess
 import os
 
-LNOFFICE_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'linoffice.sh'))
+LINOFFICE_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'linoffice.sh'))
+SETUP_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'setup.sh'))
+UNINSTALL_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'uninstall.sh'))
 
 class MainWindow(QWidget):
     def __init__(self, parent=None):
@@ -38,7 +40,6 @@ class MainWindow(QWidget):
         self.ui.pushButton_powerpoint.clicked.connect(lambda: self.launch_linoffice_app('powerpoint'))
         self.ui.pushButton_outlook.clicked.connect(lambda: self.launch_linoffice_app('outlook'))
         self.ui.pushButton_onenote.clicked.connect(lambda: self.launch_linoffice_app('onenote'))
-        # Removed tools window button connections from here
 
     # Functions to open secondary windows
     def open_settings_window(self):
@@ -54,7 +55,7 @@ class MainWindow(QWidget):
         self.troubleshooting_window.show()
 
     def launch_linoffice_app(self, *args):
-        subprocess.Popen([LNOFFICE_SCRIPT, *args])
+        subprocess.Popen([LINOFFICE_SCRIPT, *args])
 
     def update_container_status(self):
         try:
@@ -97,6 +98,7 @@ class ToolsWindow(QMainWindow):
         self.ui = loader.load(file, self)
         file.close()
 
+    # Connect buttons in tools window with LinOffice script
     def connect_tools_buttons(self):
         if self.main_window:
             self.ui.pushButton_update.clicked.connect(lambda: self.main_window.launch_linoffice_app('update'))
@@ -110,6 +112,7 @@ class TroubleshootingWindow(QMainWindow):
         super(TroubleshootingWindow, self).__init__(parent)
         self.load_ui('troubleshooting.ui')
         self.setWindowTitle(self.ui.windowTitle())
+        self.connect_troubleshooting_buttons()
 
     def load_ui(self, ui_file):
         loader = QUiLoader()
@@ -117,6 +120,54 @@ class TroubleshootingWindow(QMainWindow):
         file.open(QFile.ReadOnly)
         self.ui = loader.load(file, self)
         file.close()
+
+    def connect_troubleshooting_buttons(self):
+        self.ui.pushButton_lockfiles.clicked.connect(self.run_cleanup_full)
+        self.ui.pushButton_desktopfiles.clicked.connect(self.run_setup_desktop)
+        self.ui.pushButton_reset.clicked.connect(self.run_reset)
+        self.ui.pushButton_logfile.clicked.connect(self.open_logfile)
+        self.ui.pushButton_website.clicked.connect(self.open_website)
+        self.ui.pushButton_uninstall.clicked.connect(self.run_uninstall)
+
+    def run_cleanup_full(self):
+        subprocess.Popen([LINOFFICE_SCRIPT, 'cleanup', '--full'])
+
+    def run_setup_desktop(self):
+        subprocess.Popen([SETUP_SCRIPT, '--desktop'])
+
+    def run_reset(self):
+        subprocess.Popen([LINOFFICE_SCRIPT, 'reset'])
+
+    def open_logfile(self):
+        logfile = os.path.expanduser('~/.local/share/linoffice/linoffice.log')
+        # Try to open with xdg-open (Linux default)
+        subprocess.Popen(['xdg-open', logfile])
+
+    def open_website(self):
+        import webbrowser
+        webbrowser.open('https://github.com/eylenburg/linoffice')
+
+    def run_uninstall(self):
+        reply = QMessageBox.question(self, 'Confirm Uninstall',
+                                     'Are you sure you want to uninstall LinOffice?',
+                                     QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
+        if reply == QMessageBox.Yes:
+            # Try to open in a new terminal window (x-terminal-emulator, gnome-terminal, konsole)
+            terminal_cmds = [
+                ['x-terminal-emulator', '-e', UNINSTALL_SCRIPT],
+                ['konsole', '-e', UNINSTALL_SCRIPT],
+                ['gnome-terminal', '--', UNINSTALL_SCRIPT],
+                ['xfce4-terminal', '-e', UNINSTALL_SCRIPT],
+                ['lxterminal', '-e', UNINSTALL_SCRIPT],
+                ['mate-terminal', '-e', UNINSTALL_SCRIPT],
+                ['xterm', '-e', UNINSTALL_SCRIPT],
+            ]
+            for cmd in terminal_cmds:
+                try:
+                    subprocess.Popen(cmd)
+                    break
+                except FileNotFoundError:
+                    continue
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

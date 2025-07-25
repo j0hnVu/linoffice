@@ -17,14 +17,14 @@
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QPushButton" name="pushButton">
+      <widget class="QPushButton" name="pushButton_lockfiles">
        <property name="text">
         <string>Find and delete Office lock files</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_6">
+      <widget class="QPushButton" name="pushButton_desktopfiles">
        <property name="toolTip">
         <string>Recreate the .desktop files for starting the Office applications from the Linux application menu.</string>
        </property>
@@ -41,21 +41,14 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_3">
+      <widget class="QPushButton" name="pushButton_logfile">
        <property name="text">
-        <string>Open log files</string>
+        <string>Open log file</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_2">
-       <property name="text">
-        <string>Health check</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButton_8">
+      <widget class="QPushButton" name="pushButton_website">
        <property name="text">
         <string>Online help</string>
        </property>
@@ -85,25 +78,9 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_4">
+      <widget class="QPushButton" name="pushButton_reset">
        <property name="toolTip">
-        <string>This will kill all FreeRDP processes started by LinOffice and reboot the Podman container in which the Windows VM is running. Any unsaved documents will be lost.</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true"/>
-       </property>
-       <property name="text">
-        <string>End all LinOffice processes</string>
-       </property>
-       <property name="icon">
-        <iconset theme="QIcon::ThemeIcon::WindowClose"/>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButton_5">
-       <property name="toolTip">
-        <string>This will reboot the Windows VM. Any unsaved documents will be lost.</string>
+        <string>This will kill all FreeRDP processes started by LinOffice and reboot the Windows VM. Any unsaved documents will be lost.</string>
        </property>
        <property name="text">
         <string>Reboot container</string>
@@ -121,7 +98,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_7">
+      <widget class="QPushButton" name="pushButton_uninstall">
        <property name="toolTip">
         <string>Uninstall LinOffice and delete the Windows VM and Podman container.</string>
        </property>
@@ -129,7 +106,7 @@
         <string notr="true">color: red;</string>
        </property>
        <property name="text">
-        <string>Delete LinOffice</string>
+        <string>Uninstall LinOffice</string>
        </property>
        <property name="icon">
         <iconset theme="QIcon::ThemeIcon::EditDelete"/>
