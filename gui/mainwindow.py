@@ -4,6 +4,9 @@ from PySide6.QtWidgets import QApplication, QWidget, QMainWindow
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile
 import subprocess
+import os
+
+LNOFFICE_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'linoffice.sh'))
 
 class MainWindow(QWidget):
     def __init__(self, parent=None):
@@ -31,6 +34,7 @@ class MainWindow(QWidget):
         self.ui.pushButton_powerpoint.clicked.connect(lambda: self.launch_linoffice_app('powerpoint'))
         self.ui.pushButton_outlook.clicked.connect(lambda: self.launch_linoffice_app('outlook'))
         self.ui.pushButton_onenote.clicked.connect(lambda: self.launch_linoffice_app('onenote'))
+        # Removed tools window button connections from here
 
     # Functions to open secondary windows
     def open_settings_window(self):
@@ -38,15 +42,15 @@ class MainWindow(QWidget):
         self.settings_window.show()
 
     def open_tools_window(self):
-        self.tools_window = ToolsWindow()
+        self.tools_window = ToolsWindow(main_window=self)
         self.tools_window.show()
 
     def open_troubleshooting_window(self):
         self.troubleshooting_window = TroubleshootingWindow()
         self.troubleshooting_window.show()
 
-    def launch_linoffice_app(self, app_name):
-        subprocess.Popen(['../linoffice.sh', app_name])
+    def launch_linoffice_app(self, *args):
+        subprocess.Popen([LNOFFICE_SCRIPT, *args])
 
     def update_container_status(self):
         try:
@@ -75,10 +79,12 @@ class SettingsWindow(QMainWindow):
         file.close()
 
 class ToolsWindow(QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, main_window=None):
         super(ToolsWindow, self).__init__(parent)
+        self.main_window = main_window
         self.load_ui('tools.ui')
         self.setWindowTitle(self.ui.windowTitle())
+        self.connect_tools_buttons()
 
     def load_ui(self, ui_file):
         loader = QUiLoader()
@@ -86,6 +92,14 @@ class ToolsWindow(QMainWindow):
         file.open(QFile.ReadOnly)
         self.ui = loader.load(file, self)
         file.close()
+
+    def connect_tools_buttons(self):
+        if self.main_window:
+            self.ui.pushButton_update.clicked.connect(lambda: self.main_window.launch_linoffice_app('update'))
+            self.ui.pushButton_powershell.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'powershell.exe'))
+            self.ui.pushButton_regedit.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'regedit.exe'))
+            self.ui.pushButton_cmd.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'cmd.exe'))
+            self.ui.pushButton_explorer.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'explorer.exe'))
 
 class TroubleshootingWindow(QMainWindow):
     def __init__(self, parent=None):
