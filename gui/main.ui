@@ -29,9 +29,7 @@
    <item row="1" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>Status:
-Container: running
-Running processes: 0</string>
+      <string></string>
      </property>
     </widget>
    </item>
