@@ -2,7 +2,7 @@
 import sys
 from PySide6.QtWidgets import QApplication, QWidget, QMainWindow
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile
+from PySide6.QtCore import QFile, QTimer
 import subprocess
 import os
 
@@ -15,6 +15,10 @@ class MainWindow(QWidget):
         self.setWindowTitle(self.ui.windowTitle())
         self.connect_buttons()
         self.update_container_status()
+        # Set up a timer to update container status every 30 seconds
+        self.status_timer = QTimer(self)
+        self.status_timer.timeout.connect(self.update_container_status)
+        self.status_timer.start(30000)  # 30,000 ms = 30 seconds
 
     def load_ui(self, ui_file):
         loader = QUiLoader()
