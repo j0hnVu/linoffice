@@ -69,7 +69,7 @@ try {
     # Install updates
     Write-Host "`nInstalling updates..."
     try {
-        Install-WindowsUpdate -Updates $updates -AcceptAll -IgnoreReboot -Confirm:$false -ErrorAction Stop
+        Install-WindowsUpdate -AcceptAll -IgnoreReboot -Confirm:$false -ErrorAction Stop
     } catch {
         Write-Host "Failed to install updates: $_"
         exit 1
