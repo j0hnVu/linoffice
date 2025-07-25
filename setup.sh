@@ -748,7 +748,7 @@ function check_available() {
     fi
     print_step "7" "Checking if everything is set up correctly"
     print_info "Checking if RDP server is available"
-    local max_attempts=15  # maximum 90 seconds
+    local max_attempts=30 
     local attempt=0
     local success=0
     
@@ -803,8 +803,8 @@ function check_available() {
 
             # If unable to connect, try again
             if [ $attempt -lt $max_attempts ]; then
-                print_info "RDP server not ready yet, waiting 20 seconds..."
-                sleep 10
+                print_info "RDP server not ready yet, waiting 15 seconds..."
+                sleep 15
             fi
         done
 
@@ -812,9 +812,11 @@ function check_available() {
             print_success "RDP server is available"
             return 0
         else
-            print_error "Failed to connect to RDP server after $max_attempts attempts"
-            print_info "Container may still be starting up. Check $LOGFILE for details."
-            print_info "Possible fix: open 127.0.0.1:8006 in your web browser to access Windows via VNC, then log in using the password 'MyWindowsPassword', check if Office is installed (or if not check if a setup.exe is running in Task Manager and wait for the installation to complete), then log out again to make Windows ready to accept RDP connections (to log out: Start -> click on the account icon -> Sign out). Then run setup.sh again."
+            print_error "Failed to connect to RDP server after $max_attempts attempts. Container may still be starting up. Check $LOGFILE for details."
+            print_error "RDP server was not ready in time. This is common on the first run, as Windows may still be finishing setup in the background."
+            print_info "Please wait a minute or two, then run setup.sh again. It should continue from where it left off."
+            print_info "If you want to check progress, you can open 127.0.0.1:8006 in your browser to view the Windows VM via VNC."
+            print_info "Otherwise, possible fix: open 127.0.0.1:8006 in your web browser to access Windows via VNC, then log in using the password 'MyWindowsPassword', check if Office is installed (or if not check if a setup.exe is running in Task Manager and wait for the installation to complete), then log out again to make Windows ready to accept RDP connections (to log out: Start -> click on the account icon -> Sign out). Then run setup.sh again."
             return 1
         fi
     else
