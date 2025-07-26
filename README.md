@@ -213,8 +213,8 @@ Theoretically, this should be done automatically by the setup script but it migh
 
 Option 1: 
 - In the LinOffice folder, open the `config/linoffice.conf` and find the row saying `RDP_KBD=""`. 
-- Check [this Microsoft resource](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/default-input-locales-for-windows-language-packs?view=windows-11) to find the numeric code for your keyboard layout. 
-- Edit the line in the config file like these examples: `RDP_KBD="/kbd:layout:0x0809"` for the UK keyboard (it says `(0809:00000809)` in the Microsoft link), `RDP_KBD="/kbd:layout:0x0407"` for the German keyboard (it says `(0407:00000407)` in the Microsoft link), `RDP_KBD="/kbd:layout:0x0414"` for the Norwegian keyboard (it says `(0414:00000414)` in the Microsoft link). 
+- Check [this list of keyboard layouts](https://github.com/eylenburg/linoffice/blob/main/config/languages.csv) to find the numeric code for your keyboard layout in the first code. 
+- Edit the line in the config file like these examples: `RDP_KBD="/kbd:layout:0x0809"` for the UK keyboard or `RDP_KBD="/kbd:layout:0x0407"` for the German keyboard
 
 Option 2:
 - Access the Windows VM, either via RDP (`./linoffice.sh windows`) or VNC (`127.0.0.1:8006` in the browser, password is `MyWindowsPassword`)
