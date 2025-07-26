@@ -22,6 +22,7 @@ LINOFFICE_CONF="$(realpath "${SCRIPT_DIR}/config/linoffice.conf")"
 OEM_DIR="$(realpath "${SCRIPT_DIR}/config/oem")"
 LOCALE_REG_SCRIPT="$(realpath "${SCRIPT_DIR}/config/locale_reg.sh")"
 LOCALE_LANG_SCRIPT="$(realpath "${SCRIPT_DIR}/config/locale_lang.sh")"
+REG_OVERRIDE_SCRIPT="$(realpath "${SCRIPT_DIR}/config/registry_override.sh")"
 REGIONAL_REG="$(realpath "${SCRIPT_DIR}/config/oem/registry/regional_settings.reg")"
 LOGFILE="${APPDATA_PATH}/windows_install.log"
 DESKTOP_DIR="$(realpath "${SCRIPT_DIR}/desktop")"
@@ -382,9 +383,15 @@ function check_requirements() {
     Please ensure the config directory and local_compose.sh script exist."
     fi
 
+    if [ ! -f "$REG_OVERRIDE_SCRIPT" ]; then
+        exit_with_error "File not found: $REG_OVERRIDE_SCRIPT
+    Please ensure the config directory and locale_reg.sh script exist."
+    fi
+
     chmod +x "$LINOFFICE" || exit_with_error "Failed to make $LINOFFICE executable"
     chmod +x "$LOCALE_REG_SCRIPT" || exit_with_error "Failed to make $LOCALE_REG_SCRIPT executable"
     chmod +x "$LOCALE_LANG_SCRIPT" || exit_with_error "Failed to make $LOCALE_LANG_SCRIPT executable"
+    chmod +x "$REG_OVERRIDE_SCRIPT" || exit_with_error "Failed to make $REG_OVERRIDE_SCRIPT executable"
 
     print_success "Made scripts executable"
 

@@ -75,6 +75,9 @@ class SettingsWindow(QMainWindow):
         super(SettingsWindow, self).__init__(parent)
         self.load_ui('settings.ui')
         self.setWindowTitle(self.ui.windowTitle())
+        self.settings_changed = False
+        self.load_current_settings()
+        self.connect_settings_buttons()
 
     def load_ui(self, ui_file):
         loader = QUiLoader()
@@ -82,6 +85,168 @@ class SettingsWindow(QMainWindow):
         file.open(QFile.ReadOnly)
         self.ui = loader.load(file, self)
         file.close()
+
+    def connect_settings_buttons(self):
+        # Connect the set language button
+        self.ui.pushButton_setlang.clicked.connect(self.run_setlang)
+        
+        # Connect OK and Cancel buttons
+        self.ui.pushButton_ok.clicked.connect(self.save_settings)
+        self.ui.pushButton_cancel.clicked.connect(self.close)
+        
+        # Connect settings change signals to track modifications
+        self.ui.checkBox_suspend.toggled.connect(self.mark_settings_changed)
+        self.ui.comboBox_scaling.currentTextChanged.connect(self.mark_settings_changed)
+        self.ui.comboBox_date.currentTextChanged.connect(self.mark_settings_changed)
+        self.ui.comboBox_decimalseparator.currentTextChanged.connect(self.mark_settings_changed)
+        self.ui.lineEdit_currency.textChanged.connect(self.mark_settings_changed)
+
+    def mark_settings_changed(self):
+        self.settings_changed = True
+
+    def load_current_settings(self):
+        """Load current settings from config files"""
+        try:
+            import re
+            # Load linoffice.conf settings
+            linoffice_conf_path = os.path.join(os.path.dirname(LINOFFICE_SCRIPT), 'config', 'linoffice.conf')
+            if os.path.exists(linoffice_conf_path):
+                with open(linoffice_conf_path, 'r') as f:
+                    content = f.read()
+                    # Set autopause checkbox
+                    if 'AUTOPAUSE="on"' in content:
+                        self.ui.checkBox_suspend.setChecked(True)
+                    elif 'AUTOPAUSE="off"' in content:
+                        self.ui.checkBox_suspend.setChecked(False)
+                    
+                    # Set scaling combobox
+                    if 'RDP_SCALE="100"' in content:
+                        self.ui.comboBox_scaling.setCurrentText("100%")
+                    elif 'RDP_SCALE="140"' in content:
+                        self.ui.comboBox_scaling.setCurrentText("140%")
+                    elif 'RDP_SCALE="180"' in content:
+                        self.ui.comboBox_scaling.setCurrentText("180%")
+
+            # Load registry_override.conf settings
+            registry_conf_path = os.path.join(os.path.dirname(LINOFFICE_SCRIPT), 'config', 'registry_override.conf')
+            if os.path.exists(registry_conf_path):
+                with open(registry_conf_path, 'r') as f:
+                    content = f.read()
+                    # Set date format
+                    date_match = re.search(r'DATE_FORMAT="([^"]*)"', content)
+                    if date_match and date_match.group(1):
+                        self.ui.comboBox_date.setCurrentText(date_match.group(1))
+                    
+                    # Set decimal separator
+                    decimal_match = re.search(r'DECIMAL_SEPARATOR="([^"]*)"', content)
+                    if decimal_match and decimal_match.group(1):
+                        self.ui.comboBox_decimalseparator.setCurrentText(decimal_match.group(1))
+                    
+                    # Set currency symbol
+                    currency_match = re.search(r'CURRENCY_SYMBOL="([^"]*)"', content)
+                    if currency_match and currency_match.group(1):
+                        self.ui.lineEdit_currency.setText(currency_match.group(1))
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+
+    def run_setlang(self):
+        """Run the set language command"""
+        subprocess.Popen([LINOFFICE_SCRIPT, 'manual', 'C:\\Program Files\\Microsoft Office\\root\\Office16\\SETLANG.EXE'])
+
+    def save_settings(self):
+        """Save all settings to config files"""
+        try:
+            import re
+            registry_settings_changed = False
+            
+            # Save linoffice.conf settings
+            linoffice_conf_path = os.path.join(os.path.dirname(LINOFFICE_SCRIPT), 'config', 'linoffice.conf')
+            if os.path.exists(linoffice_conf_path):
+                with open(linoffice_conf_path, 'r') as f:
+                    content = f.read()
+                
+                # Update AUTOPAUSE setting
+                autopause_value = "on" if self.ui.checkBox_suspend.isChecked() else "off"
+                content = content.replace('AUTOPAUSE="on"', f'AUTOPAUSE="{autopause_value}"')
+                content = content.replace('AUTOPAUSE="off"', f'AUTOPAUSE="{autopause_value}"')
+                
+                # Update RDP_SCALE setting
+                scaling_text = self.ui.comboBox_scaling.currentText()
+                if scaling_text.endswith('%'):
+                    scaling_value = scaling_text[:-1]  # Remove % character
+                else:
+                    scaling_value = scaling_text
+                
+                content = content.replace('RDP_SCALE="100"', f'RDP_SCALE="{scaling_value}"')
+                content = content.replace('RDP_SCALE="140"', f'RDP_SCALE="{scaling_value}"')
+                content = content.replace('RDP_SCALE="180"', f'RDP_SCALE="{scaling_value}"')
+                
+                with open(linoffice_conf_path, 'w') as f:
+                    f.write(content)
+
+            # Save registry_override.conf settings
+            registry_conf_path = os.path.join(os.path.dirname(LINOFFICE_SCRIPT), 'config', 'registry_override.conf')
+            if os.path.exists(registry_conf_path):
+                with open(registry_conf_path, 'r') as f:
+                    original_content = f.read()
+                
+                content = original_content
+                
+                # Update DATE_FORMAT
+                date_value = self.ui.comboBox_date.currentText()
+                if date_value != "(no change)":
+                    content = re.sub(r'DATE_FORMAT="[^"]*"', f'DATE_FORMAT="{date_value}"', content)
+                
+                # Update DECIMAL_SEPARATOR
+                decimal_value = self.ui.comboBox_decimalseparator.currentText()
+                if decimal_value != "(no change)":
+                    content = re.sub(r'DECIMAL_SEPARATOR="[^"]*"', f'DECIMAL_SEPARATOR="{decimal_value}"', content)
+                
+                # Update CURRENCY_SYMBOL
+                currency_value = self.ui.lineEdit_currency.text()
+                content = re.sub(r'CURRENCY_SYMBOL="[^"]*"', f'CURRENCY_SYMBOL="{currency_value}"', content)
+                
+                # Check if registry settings actually changed
+                if content != original_content:
+                    registry_settings_changed = True
+                
+                with open(registry_conf_path, 'w') as f:
+                    f.write(content)
+            
+            # Run registry_override.sh if registry settings were changed
+            if registry_settings_changed:
+                registry_script_path = os.path.join(os.path.dirname(LINOFFICE_SCRIPT), 'config', 'registry_override.sh')
+                if os.path.exists(registry_script_path):
+                    try:
+                        subprocess.run([registry_script_path], check=True)
+                    except subprocess.CalledProcessError as e:
+                        QMessageBox.warning(self, 'Warning', f'Registry override script failed to run: {e}')
+                    except FileNotFoundError:
+                        QMessageBox.warning(self, 'Warning', 'Registry override script not found or not executable')
+            
+            self.settings_changed = False
+            self.close()
+            
+        except Exception as e:
+            QMessageBox.critical(self, 'Error', f'Failed to save settings: {e}')
+
+    def closeEvent(self, event):
+        """Handle window close event with confirmation dialog if settings changed"""
+        if self.settings_changed:
+            reply = QMessageBox.question(self, 'Save Changes?',
+                                       'You have unsaved changes. Do you want to save them before closing?',
+                                       QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                                       QMessageBox.Save)
+            
+            if reply == QMessageBox.Save:
+                self.save_settings()
+                event.accept()
+            elif reply == QMessageBox.Discard:
+                event.accept()
+            else:  # Cancel
+                event.ignore()
+        else:
+            event.accept()
 
 class ToolsWindow(QMainWindow):
     def __init__(self, parent=None, main_window=None):
@@ -121,6 +286,7 @@ class TroubleshootingWindow(QMainWindow):
         self.ui = loader.load(file, self)
         file.close()
 
+    # Connect buttons in troubleshooting window with LinOffice script
     def connect_troubleshooting_buttons(self):
         self.ui.pushButton_lockfiles.clicked.connect(self.run_cleanup_full)
         self.ui.pushButton_desktopfiles.clicked.connect(self.run_setup_desktop)
