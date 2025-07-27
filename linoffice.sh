@@ -803,7 +803,7 @@ function waRunCommand() {
         FREERDP_PID=$!   
 
     elif [ "$1" = "update" ]; then
-        # Open specified application.
+        # Run the script
         dprint "UPDATE"
         podman unshare --rootless-netns "$FREERDP_COMMAND" \
             /u:$RDP_USER \
@@ -816,6 +816,26 @@ function waRunCommand() {
             $RDP_KBD \
             $RDP_FLAGS \
             /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\UpdateWindows.ps1' \
+            /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
+    
+        # Capture the process ID.
+        FREERDP_PID=$!  
+
+    # This function is not meant to be used by the user. It executes a script to update the registry for international settings if the settings have been changed in the LinOffice GUI
+    elif [ "$1" = "registry_override" ]; then
+        # Run the script
+        dprint "UPDATE"
+        podman unshare --rootless-netns "$FREERDP_COMMAND" \
+            /u:$RDP_USER \
+            /p:$RDP_PASS \
+            /scale:$RDP_SCALE \
+            +auto-reconnect \
+            +home-drive \
+            +clipboard \
+            -wallpaper \
+            $RDP_KBD \
+            $RDP_FLAGS \
+            /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\RegistryOverride.ps1' \
             /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
     
         # Capture the process ID.

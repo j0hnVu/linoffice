@@ -10,9 +10,27 @@ LINOFFICE_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 SETUP_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'setup.sh'))
 UNINSTALL_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'uninstall.sh'))
 
+# Define the user's local registry override config path
+USER_REGISTRY_CONFIG = os.path.expanduser('~/.local/share/linoffice/registry_override.conf')
+
+def ensure_registry_config_exists():
+    """Ensure the registry_override.conf file exists in user's local directory"""
+    config_dir = os.path.dirname(USER_REGISTRY_CONFIG)
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir, exist_ok=True)
+    
+    if not os.path.exists(USER_REGISTRY_CONFIG):
+        # Create the file with default empty values
+        with open(USER_REGISTRY_CONFIG, 'w') as f:
+            f.write('DATE_FORMAT=""\n')
+            f.write('DECIMAL_SEPARATOR=""\n')
+            f.write('CURRENCY_SYMBOL=""\n')
+
 class MainWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        # Ensure registry config exists before loading UI
+        ensure_registry_config_exists()
         self.load_ui('main.ui')
         self.setWindowTitle(self.ui.windowTitle())
         self.connect_buttons()
@@ -128,24 +146,26 @@ class SettingsWindow(QMainWindow):
                         self.ui.comboBox_scaling.setCurrentText("180%")
 
             # Load registry_override.conf settings
-            registry_conf_path = os.path.join(os.path.dirname(LINOFFICE_SCRIPT), 'config', 'registry_override.conf')
-            if os.path.exists(registry_conf_path):
-                with open(registry_conf_path, 'r') as f:
-                    content = f.read()
-                    # Set date format
-                    date_match = re.search(r'DATE_FORMAT="([^"]*)"', content)
-                    if date_match and date_match.group(1):
-                        self.ui.comboBox_date.setCurrentText(date_match.group(1))
-                    
-                    # Set decimal separator
-                    decimal_match = re.search(r'DECIMAL_SEPARATOR="([^"]*)"', content)
-                    if decimal_match and decimal_match.group(1):
-                        self.ui.comboBox_decimalseparator.setCurrentText(decimal_match.group(1))
-                    
-                    # Set currency symbol
-                    currency_match = re.search(r'CURRENCY_SYMBOL="([^"]*)"', content)
-                    if currency_match and currency_match.group(1):
-                        self.ui.lineEdit_currency.setText(currency_match.group(1))
+            registry_conf_path = USER_REGISTRY_CONFIG
+            # Ensure the file exists (recreate if deleted)
+            ensure_registry_config_exists()
+            
+            with open(registry_conf_path, 'r') as f:
+                content = f.read()
+                # Set date format
+                date_match = re.search(r'DATE_FORMAT="([^"]*)"', content)
+                if date_match and date_match.group(1):
+                    self.ui.comboBox_date.setCurrentText(date_match.group(1))
+                
+                # Set decimal separator
+                decimal_match = re.search(r'DECIMAL_SEPARATOR="([^"]*)"', content)
+                if decimal_match and decimal_match.group(1):
+                    self.ui.comboBox_decimalseparator.setCurrentText(decimal_match.group(1))
+                
+                # Set currency symbol
+                currency_match = re.search(r'CURRENCY_SYMBOL="([^"]*)"', content)
+                if currency_match and currency_match.group(1):
+                    self.ui.lineEdit_currency.setText(currency_match.group(1))
         except Exception as e:
             print(f"Error loading settings: {e}")
 
@@ -185,44 +205,42 @@ class SettingsWindow(QMainWindow):
                     f.write(content)
 
             # Save registry_override.conf settings
-            registry_conf_path = os.path.join(os.path.dirname(LINOFFICE_SCRIPT), 'config', 'registry_override.conf')
-            if os.path.exists(registry_conf_path):
-                with open(registry_conf_path, 'r') as f:
-                    original_content = f.read()
-                
-                content = original_content
-                
-                # Update DATE_FORMAT
-                date_value = self.ui.comboBox_date.currentText()
-                if date_value != "(no change)":
-                    content = re.sub(r'DATE_FORMAT="[^"]*"', f'DATE_FORMAT="{date_value}"', content)
-                
-                # Update DECIMAL_SEPARATOR
-                decimal_value = self.ui.comboBox_decimalseparator.currentText()
-                if decimal_value != "(no change)":
-                    content = re.sub(r'DECIMAL_SEPARATOR="[^"]*"', f'DECIMAL_SEPARATOR="{decimal_value}"', content)
-                
-                # Update CURRENCY_SYMBOL
-                currency_value = self.ui.lineEdit_currency.text()
-                content = re.sub(r'CURRENCY_SYMBOL="[^"]*"', f'CURRENCY_SYMBOL="{currency_value}"', content)
-                
-                # Check if registry settings actually changed
-                if content != original_content:
-                    registry_settings_changed = True
-                
-                with open(registry_conf_path, 'w') as f:
-                    f.write(content)
+            registry_conf_path = USER_REGISTRY_CONFIG
+            # Ensure the file exists before saving
+            ensure_registry_config_exists()
             
-            # Run registry_override.sh if registry settings were changed
+            with open(registry_conf_path, 'r') as f:
+                original_content = f.read()
+            
+            content = original_content
+            
+            # Update DATE_FORMAT
+            date_value = self.ui.comboBox_date.currentText()
+            if date_value != "(no change)":
+                content = re.sub(r'DATE_FORMAT="[^"]*"', f'DATE_FORMAT="{date_value}"', content)
+            
+            # Update DECIMAL_SEPARATOR
+            decimal_value = self.ui.comboBox_decimalseparator.currentText()
+            if decimal_value != "(no change)":
+                content = re.sub(r'DECIMAL_SEPARATOR="[^"]*"', f'DECIMAL_SEPARATOR="{decimal_value}"', content)
+            
+            # Update CURRENCY_SYMBOL
+            currency_value = self.ui.lineEdit_currency.text()
+            content = re.sub(r'CURRENCY_SYMBOL="[^"]*"', f'CURRENCY_SYMBOL="{currency_value}"', content)
+            
+            # Check if registry settings actually changed
+            if content != original_content:
+                registry_settings_changed = True
+            
+            with open(registry_conf_path, 'w') as f:
+                f.write(content)
+            
+            # Run linoffice.sh registry_override if registry settings were changed
             if registry_settings_changed:
-                registry_script_path = os.path.join(os.path.dirname(LINOFFICE_SCRIPT), 'config', 'registry_override.sh')
-                if os.path.exists(registry_script_path):
-                    try:
-                        subprocess.run([registry_script_path], check=True)
-                    except subprocess.CalledProcessError as e:
-                        QMessageBox.warning(self, 'Warning', f'Registry override script failed to run: {e}')
-                    except FileNotFoundError:
-                        QMessageBox.warning(self, 'Warning', 'Registry override script not found or not executable')
+                try:
+                    subprocess.Popen([LINOFFICE_SCRIPT, 'registry_override'])
+                except FileNotFoundError:
+                    QMessageBox.warning(self, 'Warning', 'LinOffice script not found or not executable')
             
             self.settings_changed = False
             self.close()
