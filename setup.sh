@@ -25,8 +25,8 @@ LOCALE_LANG_SCRIPT="$(realpath "${SCRIPT_DIR}/config/locale_lang.sh")"
 REG_OVERRIDE_SCRIPT="$(realpath "${SCRIPT_DIR}/config/registry_override.sh")"
 REGIONAL_REG="$(realpath "${SCRIPT_DIR}/config/oem/registry/regional_settings.reg")"
 LOGFILE="${APPDATA_PATH}/windows_install.log"
-DESKTOP_DIR="$(realpath "${SCRIPT_DIR}/desktop")"
 APPS_DIR="$(realpath "${SCRIPT_DIR}/apps")"
+DESKTOP_DIR="$(realpath "${APPS_DIR}/desktop")"
 FREERDP_COMMAND="" # will be checked in the script whether it's xfreerdp, xfreerdp3, or the Flatpak version
 
 # Progress tracking states
