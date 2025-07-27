@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>WelcomePage</class>
+ <widget class="QWidget" name="WelcomePage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>235</width>
+    <height>70</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="welcomeLabel">
+     <property name="text">
+      <string>Welcome to LinOffice!
+LinOffice is a Microsoft Office launcher for Linux.
+
+Requirements:
+1. Fast Internet connection (as you will need to download several GB from Microsoft)
+2. Modern hardware (at least 8 GB RAM, 64 GB free storage, >4 CPU cores, virtualization support)
+3. Dependencies (podman, podman-compose, freerdp) are installed
+
+Click on Next to install Microsoft Office.
+</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignmentFlag::AlignCenter</set>
+     </property>
+     <property name="margin">
+      <number>20</number>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

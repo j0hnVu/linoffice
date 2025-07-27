@@ -1,5 +1,0 @@
-[project]
-name = "LinOffice"
-
-[tool.pyside6-project]
-files = ["main.ui", "mainwindow.py", "settings.ui", "tools.ui", "troubleshooting.ui"]
