@@ -21,20 +21,27 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 - [x] International support: Automatic detection of language, date format, thousand and decimal separator, currency symbol, keyboard layout etc. in the Linux system to apply the same settings to Windows (so that you don't have to deal with mm/dd/yyyy if you're not American!). Also avoids geo-restrictions for the Office installation. The time zone is set to UTC for simplicity and to avoid issues with timestamps when saving in the /home folder
 - [x] Script to install updates for Windows and Office.
 - [x] Tidy Quick Access pane in Windows File Explorer
+- [x] Option to deny network access to VM (after Office is all set up) by running `./linoffice.sh internet_off` or `./linoffice.sh internet_on`. This works by creating an invalid DNS server so that domains can't be resolved, which should be enough to prevent Windows and Office from "phoning home".
+- [x] GUI **experimental and unfinished**
+    - [x] Launch Office apps once installed
+    - [x] Toggle settings such as display scaling, network on/off, auto-suspend on/off
+    - [x] Explicitly set regional settings, e.g. keyboard layout, decimal separator, date format, default currency symbol for the VM
+    - [x] Open Microsoft Office Language Settings (`setlang.exe`)
+    - [x] Quick actions e.g. run Windows Update, open Powershell / Command Prompt / Windows Explorer / Registry Editor
+    - [x] Troubleshooting e.g. force cleanup of Office lock files from `/home`, recreate .desktop files for the Office apps, reboot the Windows container
+    - [x] Uninstall (with or without removing the container and its volume)
 
 **<details><summary>Planned features</summary>**
     
 ### Planned features
 
-- [ ] Option to deny network access to VM (after Office is all set up). The first aim is to avoid Windows and Office "phoning home", which could perhaps be done by setting the Windows DNS server to IP that doesn't work. It would also be nice to completely stop all non-RDP network traffic to reduce security risks for users who don't keep their Windows VM updated
-- [ ] GUI
-    - [ ] Install wizard replacing `setup.sh`
-    - [ ] Launch Office apps once installed
-    - [ ] Set display scaling
-    - [ ] Explicitly set regional settings, keyboard layout, time zone (e.g. for Excel's `=NOW()` formula) for the VM
-    - [ ] Quick actions e.g. run Windows Update, open Powershell, open Office Language Settings, clean orphaned lock files from /home folder, enable/disable network access for Windows
-    - [ ] Troubleshooting e.g. recreate .desktop files (`setup.sh --desktop`), RDP & Office check (`setup.sh --firstrun`), reset FreeRDP and container (`linoffice.sh --reset`), reboot Windows VM, general health and dependency check
-    - [ ] Uninstall (with or without removing the container and its volume)
+- [ ] GUI functions
+    - [ ] Graphical install wizard replacing `setup.sh`
+    - [ ] Run `windows` (RDP window with full VM) or open VNC in browser
+    - [ ] Health check (basically re-run the first part of the `setup.sh`)
+    - [ ] For troubleshooting: Reboot Windows without restarting container (basically just `xfreerdp /app:program:cmd.exe,cmd:'/c shutdown /r /t 0'`)
+    - [ ] Run other Office apps, if installed, e.g. Access, Publisher, Visio, ...
+- [ ] APPDATA folder should not be hardcoded (in `setup.sh`, `linoffice.sh`, `mainwindow.py`, `TimeSync.ps1`, `FirstRunRDP.ps1`, and `RegistryOverride.ps1`) or at least only hardcoded in one of them and then read by the others (like `uninstall.sh` is doing).
 - [ ] Deliver as Flatpak or AppImage, which would have these benefits:
     - Bundles dependencies such as FreeRDP and Podman-Compose; only Podman would need to be installed on the system already
     - Installation and uninstallation more straight-forward for Linux beginners
@@ -176,6 +183,10 @@ The **Microsoft Activation Scripts (MAS)** will also work if you have, let's say
 ### Display scaling
 
 You can set the display scaling by modifying the value for `RDP_SCALE` in the `linoffice.conf.default` (before installation) or `linoffice.conf` (after installation). 
+
+### Using the GUI
+
+Currently, the GUI is still a work in progress, but it mostly works. To run it you need to have `python3` and `pyside6` installed on your system (the exact names of the packages differ for every distro). Download the [latest git version](https://github.com/eylenburg/linoffice/archive/refs/heads/main.zip) of LinOffice and unpack it in your LinOffice folder. Then, navigate to the `gui` folder and launch the GUI with `python3 mainwindow.py`. If you already have a working VM you may need to copy `dns_on.bat`, `dns_off.bat` and `RegistryOverride.ps1` (in `config/oem`) to your VM's `C:\OEM` folder manually for some of the setting changes to actually apply.
 
 # Troubleshooting
 
