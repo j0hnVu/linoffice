@@ -401,6 +401,12 @@ class ToolsWindow(QMainWindow):
             self.ui.pushButton_regedit.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'regedit.exe'))
             self.ui.pushButton_cmd.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'cmd.exe'))
             self.ui.pushButton_explorer.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'explorer.exe'))
+            self.ui.pushButton_windows_rdp.clicked.connect(lambda: self.main_window.launch_linoffice_app('windows'))
+            self.ui.pushButton_windows_vnc.clicked.connect(self.open_vnc_in_browser)
+
+    def open_vnc_in_browser(self):
+        import webbrowser
+        webbrowser.open('http://127.0.0.1:8006')
 
 class TroubleshootingWindow(QMainWindow):
     def __init__(self, parent=None):

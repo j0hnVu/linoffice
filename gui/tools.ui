@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>236</width>
-    <height>243</height>
+    <width>239</width>
+    <height>276</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,6 +24,44 @@
       </widget>
      </item>
      <item>
+      <widget class="Line" name="line_2">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Access windows desktop:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QPushButton" name="pushButton_windows_rdp">
+         <property name="toolTip">
+          <string>Opens a full Windows session via Remote Desktop Protocol (RDP), with shared clipboard and /home folder</string>
+         </property>
+         <property name="text">
+          <string>via RDP</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="pushButton_windows_vnc">
+         <property name="toolTip">
+          <string>Shows the Windows VM in the web browser via VNC (no clipboard sharing or access to /home)</string>
+         </property>
+         <property name="text">
+          <string>via VNC</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
       <widget class="Line" name="line">
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>
@@ -33,7 +71,7 @@
      <item>
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>Run:</string>
+        <string>Run app:</string>
        </property>
       </widget>
      </item>

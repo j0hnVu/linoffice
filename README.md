@@ -30,6 +30,7 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
     - [x] Quick actions e.g. run Windows Update, open Powershell / Command Prompt / Windows Explorer / Registry Editor
     - [x] Troubleshooting e.g. force cleanup of Office lock files from `/home`, recreate .desktop files for the Office apps, reboot the Windows container
     - [x] Uninstall (with or without removing the container and its volume)
+    - [x] Run a full Windows session via RDP or VNC
 
 **<details><summary>Planned features</summary>**
     
@@ -37,7 +38,6 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 
 - [ ] GUI functions
     - [ ] Graphical install wizard replacing `setup.sh`
-    - [ ] Run `windows` (RDP window with full VM) or open VNC in browser
     - [ ] Health check (basically re-run the first part of the `setup.sh`)
     - [ ] For troubleshooting: Reboot Windows without restarting container (basically just `xfreerdp /app:program:cmd.exe,cmd:'/c shutdown /r /t 0'`)
     - [ ] Run other Office apps, if installed, e.g. Access, Publisher, Visio, ...
