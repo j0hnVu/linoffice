@@ -22,7 +22,7 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 - [x] Script to install updates for Windows and Office.
 - [x] Tidy Quick Access pane in Windows File Explorer
 - [x] Option to deny network access to VM (after Office is all set up) by running `./linoffice.sh internet_off` or `./linoffice.sh internet_on`. This works by creating an invalid DNS server so that domains can't be resolved, which should be enough to prevent Windows and Office from "phoning home".
-- [x] GUI **experimental and unfinished**
+- [x] GUI (*experimental and unfinished*)
     - [x] Launch Office apps once installed
     - [x] Toggle settings such as display scaling, network on/off, auto-suspend on/off
     - [x] Explicitly set regional settings, e.g. keyboard layout, decimal separator, date format, default currency symbol for the VM
@@ -41,7 +41,7 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
     - [ ] Health check (basically re-run the first part of the `setup.sh`)
     - [ ] For troubleshooting: Reboot Windows without restarting container (basically just `xfreerdp /app:program:cmd.exe,cmd:'/c shutdown /r /t 0'`)
     - [ ] Run other Office apps, if installed, e.g. Access, Publisher, Visio, ...
-- [ ] APPDATA folder should not be hardcoded (in `setup.sh`, `linoffice.sh`, `mainwindow.py`, `TimeSync.ps1`, `FirstRunRDP.ps1`, and `RegistryOverride.ps1`) or at least only hardcoded in one of them and then read by the others (like `uninstall.sh` is doing).
+- [ ] APPDATA folder should not be hardcoded (in `setup.sh`, `linoffice.sh`, `mainwindow.py`, `installer.py`, `TimeSync.ps1`, `FirstRunRDP.ps1`, and `RegistryOverride.ps1`) or at least only hardcoded in one of them and then read by the others (like `uninstall.sh` is doing).
 - [ ] Deliver as Flatpak or AppImage, which would have these benefits:
     - Bundles dependencies such as FreeRDP and Podman-Compose; only Podman would need to be installed on the system already
     - Installation and uninstallation more straight-forward for Linux beginners
