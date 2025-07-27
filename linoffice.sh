@@ -841,6 +841,46 @@ function waRunCommand() {
         # Capture the process ID.
         FREERDP_PID=$!  
 
+    # This function is not meant to be used by the user. It executes a script to turn of Internet in the VM (via invalid DNS) if the settings have been changed in the LinOffice GUI
+    elif [ "$1" = "internet_off" ]; then
+        # Run the script
+        dprint "UPDATE"
+        podman unshare --rootless-netns "$FREERDP_COMMAND" \
+            /u:$RDP_USER \
+            /p:$RDP_PASS \
+            /scale:$RDP_SCALE \
+            +auto-reconnect \
+            +home-drive \
+            +clipboard \
+            -wallpaper \
+            $RDP_KBD \
+            $RDP_FLAGS \
+            /app:program:cmd.exe,cmd:'/c C:\\OEM\\dns_off.bat' \
+            /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
+    
+        # Capture the process ID.
+        FREERDP_PID=$!  
+
+    # This function is not meant to be used by the user. It executes a script to re-enable automatic DNS if the settings have been changed in the LinOffice GUI
+    elif [ "$1" = "internet_on" ]; then
+        # Run the script
+        dprint "UPDATE"
+        podman unshare --rootless-netns "$FREERDP_COMMAND" \
+            /u:$RDP_USER \
+            /p:$RDP_PASS \
+            /scale:$RDP_SCALE \
+            +auto-reconnect \
+            +home-drive \
+            +clipboard \
+            -wallpaper \
+            $RDP_KBD \
+            $RDP_FLAGS \
+            /app:program:cmd.exe,cmd:'/c C:\\OEM\\dns_on.bat' \
+            /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
+    
+        # Capture the process ID.
+        FREERDP_PID=$!  
+
     else
         # Script summoned from right-click menu or application icon (plus/minus a file path).
         if [ -e "${SCRIPT_DIR_PATH}/apps/${1}/info.txt" ]; then

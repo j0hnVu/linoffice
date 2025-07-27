@@ -6,6 +6,7 @@ from PySide6.QtCore import QFile, QTimer
 import subprocess
 import os
 import csv
+import threading
 
 LINOFFICE_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'linoffice.sh'))
 SETUP_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'setup.sh'))
@@ -16,6 +17,40 @@ USER_REGISTRY_CONFIG = os.path.expanduser('~/.local/share/linoffice/registry_ove
 
 # Define the languages CSV file path
 LANGUAGES_CSV = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config', 'languages.csv'))
+
+# Define the internet state file path
+INTERNET_STATE_FILE = os.path.expanduser('~/.local/share/linoffice/internet')
+
+def ensure_internet_state_file():
+        """Ensure the internet state file exists with default 'on' value"""
+        state_dir = os.path.dirname(INTERNET_STATE_FILE)
+        if not os.path.exists(state_dir):
+            os.makedirs(state_dir, exist_ok=True)
+        
+        if not os.path.exists(INTERNET_STATE_FILE):
+            # Create the file with default 'on' state
+            with open(INTERNET_STATE_FILE, 'w') as f:
+                f.write('on\n')
+
+def load_internet_state():
+    """Load the current internet state from file"""
+    ensure_internet_state_file()
+    try:
+        with open(INTERNET_STATE_FILE, 'r') as f:
+            state = f.read().strip()
+            return state == 'on'
+    except Exception as e:
+        print(f"Error loading internet state: {e}")
+        return True  # Default to 'on' if error
+
+def save_internet_state(state_on):
+    """Save the internet state to file"""
+    ensure_internet_state_file()
+    try:
+        with open(INTERNET_STATE_FILE, 'w') as f:
+            f.write('on\n' if state_on else 'off\n')
+    except Exception as e:
+        print(f"Error saving internet state: {e}")
 
 def ensure_registry_config_exists():
     """Ensure the registry_override.conf file exists in user's local directory"""
@@ -115,7 +150,10 @@ class SettingsWindow(QMainWindow):
         self.load_ui('settings.ui')
         self.setWindowTitle(self.ui.windowTitle())
         self.settings_changed = False
+        self._initial_network_checked = None  # Track initial state
         self.load_current_settings()
+        # Store the initial state after loading
+        self._initial_network_checked = self.ui.checkBox_network.isChecked()
         self.connect_settings_buttons()
 
     def load_ui(self, ui_file):
@@ -135,6 +173,7 @@ class SettingsWindow(QMainWindow):
         
         # Connect settings change signals to track modifications
         self.ui.checkBox_suspend.toggled.connect(self.mark_settings_changed)
+        self.ui.checkBox_network.toggled.connect(self.mark_settings_changed)  # Track network changes
         self.ui.comboBox_scaling.currentTextChanged.connect(self.mark_settings_changed)
         self.ui.comboBox_date.currentTextChanged.connect(self.mark_settings_changed)
         self.ui.comboBox_decimalseparator.currentTextChanged.connect(self.mark_settings_changed)
@@ -181,6 +220,10 @@ class SettingsWindow(QMainWindow):
                                 self.ui.comboBox_keyboard.setCurrentIndex(i)
                                 break
 
+            # Load network state from file
+            network_state = load_internet_state()
+            self.ui.checkBox_network.setChecked(network_state)
+
             # Load registry_override.conf settings
             registry_conf_path = USER_REGISTRY_CONFIG
             # Ensure the file exists (recreate if deleted)
@@ -225,6 +268,18 @@ class SettingsWindow(QMainWindow):
         try:
             import re
             registry_settings_changed = False
+            # --- Network checkbox logic ---
+            network_checked = self.ui.checkBox_network.isChecked()
+            if self._initial_network_checked is not None and network_checked != self._initial_network_checked:
+                if network_checked:
+                    threading.Thread(target=lambda: subprocess.Popen([LINOFFICE_SCRIPT, 'internet_on'])).start()
+                else:
+                    threading.Thread(target=lambda: subprocess.Popen([LINOFFICE_SCRIPT, 'internet_off'])).start()
+                # Save the new state to file
+                save_internet_state(network_checked)
+                # Update the initial state for next time
+                self._initial_network_checked = network_checked
+            # --- End network checkbox logic ---
             
             # Save linoffice.conf settings
             linoffice_conf_path = os.path.join(os.path.dirname(LINOFFICE_SCRIPT), 'config', 'linoffice.conf')
