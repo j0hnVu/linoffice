@@ -259,15 +259,15 @@ function check_requirements() {
     if python3 -c "import dotenv" >/dev/null 2>&1; then
         print_success "python-dotenv is installed."
     else
-        print_error "python-dotenv is not installed. 
+        exit_with_error "python-dotenv is not installed. 
         
     HOW TO FIX:
     Using pip: pip install python-dotenv
     If you don't have pip, you can install it with your package manager.
-    Ubuntu/Debian: sudo apt install python3-pip
-    Fedora: sudo dnf install python3-pip
-    OpenSUSE: sudo zypper install python3-pip
-    Arch Linux: sudo pacman -S python-pip"
+    Ubuntu/Debian: sudo apt install python-dotenv
+    Fedora: sudo dnf install python-dotenv
+    OpenSUSE: sudo zypper install python-python-dotenv
+    Arch Linux: sudo pacman -S python-dotenv"
 
     fi
 
@@ -432,12 +432,11 @@ function check_requirements() {
     
     # Check if storage directory is accessible
     if [ ! -d "$STORAGE_DIR" ] || [ ! -w "$STORAGE_DIR" ]; then
-        print_error "Podman storage directory inaccessible: $STORAGE_DIR"
-        print_info "HOW TO FIX:
+        exit_with_error "Podman storage directory inaccessible: $STORAGE_DIR
+        
         1. Check if directory exists: ls -ld \"$STORAGE_DIR\"
         2. If it exists, fix permissions: $( $IS_ROOTLESS && echo "chmod -R u+rwX \"$STORAGE_DIR\"" || echo "sudo chmod -R u+rwX \"$STORAGE_DIR\"" )
         3. If it does not exist, initialize Podman: podman info"
-        exit_with_error "Podman storage directory not accessible."
     fi
     print_success "Podman storage directory verified: $STORAGE_DIR"
     
@@ -453,15 +452,15 @@ function check_requirements() {
     TEST_NET_NAME="linoffice_net_test_$(date +%s)"
     print_info "Testing network creation with backend: $NETWORK_BACKEND"
     if ! podman network create "$TEST_NET_NAME" >/dev/null 2>&1; then
-        print_error "Failed to create test network '$TEST_NET_NAME'."
-        print_info "HOW TO FIX:
+        exit_with_error "Failed to create test network '$TEST_NET_NAME'.
+        
+        HOW TO FIX:
         1. Check Podman logs: journalctl -u podman
         2. $( $IS_ROOTLESS && echo 'Ensure user has sufficient permissions.' || echo 'Run as root or check sudo permissions.' )
         3. Reinstall network backend:
            - For netavark: $( $IS_ROOTLESS && echo 'podman system reset && podman info' || echo 'sudo dnf reinstall netavark || sudo apt install netavark' )
            - For CNI: Ensure CNI plugins are installed (e.g., sudo dnf install containernetworking-plugins)
         4. Verify SELinux/AppArmor settings if enabled."
-        exit_with_error "Network creation failed."
     fi
     print_success "Test network '$TEST_NET_NAME' created successfully."
 
@@ -603,9 +602,8 @@ function create_container() {
     while true; do
         local current_time=$(date +%s)
         if [ $((current_time - last_activity_time)) -gt $max_timeout ]; then
-            print_error "Container setup timed out after $((max_timeout/60)) minutes."
             result=1
-            break
+            exit_with_error "Container setup timed out after $((max_timeout/60)) minutes."
         fi
         
         # Read the logfile if it exists
@@ -665,7 +663,7 @@ function create_container() {
                     monitor_elapsed=$((monitor_elapsed + monitor_interval))
                 done
                 if [ $monitor_elapsed -ge $monitor_timeout ]; then
-                    print_error "Timeout waiting for Windows to start after download. Check $LOGFILE for details."
+                    exit_with_error "Timeout waiting for Windows to start after download. Check $LOGFILE for details."
                 fi
             fi
 
