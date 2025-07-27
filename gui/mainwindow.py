@@ -5,6 +5,7 @@ from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QTimer
 import subprocess
 import os
+import csv
 
 LINOFFICE_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'linoffice.sh'))
 SETUP_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'setup.sh'))
@@ -12,6 +13,9 @@ UNINSTALL_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 # Define the user's local registry override config path
 USER_REGISTRY_CONFIG = os.path.expanduser('~/.local/share/linoffice/registry_override.conf')
+
+# Define the languages CSV file path
+LANGUAGES_CSV = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config', 'languages.csv'))
 
 def ensure_registry_config_exists():
     """Ensure the registry_override.conf file exists in user's local directory"""
@@ -25,6 +29,23 @@ def ensure_registry_config_exists():
             f.write('DATE_FORMAT=""\n')
             f.write('DECIMAL_SEPARATOR=""\n')
             f.write('CURRENCY_SYMBOL=""\n')
+
+def load_languages_from_csv():
+    """Load languages from the CSV file and return a list of formatted options"""
+    languages = []
+    try:
+        with open(LANGUAGES_CSV, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            next(reader)  # Skip header row
+            for row in reader:
+                if len(row) >= 3:
+                    kbd_code, lang_code, lang_name = row[0], row[1], row[2]
+                    # Format: "af_ZA [Afrikaans (South Africa)]"
+                    formatted_option = f"{lang_code} [{lang_name}]"
+                    languages.append((formatted_option, kbd_code))
+    except Exception as e:
+        print(f"Error loading languages from CSV: {e}")
+    return languages
 
 class MainWindow(QWidget):
     def __init__(self, parent=None):
@@ -118,6 +139,7 @@ class SettingsWindow(QMainWindow):
         self.ui.comboBox_date.currentTextChanged.connect(self.mark_settings_changed)
         self.ui.comboBox_decimalseparator.currentTextChanged.connect(self.mark_settings_changed)
         self.ui.lineEdit_currency.textChanged.connect(self.mark_settings_changed)
+        self.ui.comboBox_keyboard.currentTextChanged.connect(self.mark_settings_changed)
 
     def mark_settings_changed(self):
         self.settings_changed = True
@@ -144,6 +166,20 @@ class SettingsWindow(QMainWindow):
                         self.ui.comboBox_scaling.setCurrentText("140%")
                     elif 'RDP_SCALE="180"' in content:
                         self.ui.comboBox_scaling.setCurrentText("180%")
+                    
+                    # Load and populate keyboard comboBox
+                    self.populate_keyboard_combo()
+                    
+                    # Set current keyboard selection
+                    kbd_match = re.search(r'RDP_KBD="([^"]*)"', content)
+                    if kbd_match and kbd_match.group(1):
+                        current_kbd = kbd_match.group(1)
+                        # Find the corresponding language option
+                        for i in range(self.ui.comboBox_keyboard.count()):
+                            item_data = self.ui.comboBox_keyboard.itemData(i)
+                            if item_data == current_kbd:
+                                self.ui.comboBox_keyboard.setCurrentIndex(i)
+                                break
 
             # Load registry_override.conf settings
             registry_conf_path = USER_REGISTRY_CONFIG
@@ -168,6 +204,17 @@ class SettingsWindow(QMainWindow):
                     self.ui.lineEdit_currency.setText(currency_match.group(1))
         except Exception as e:
             print(f"Error loading settings: {e}")
+
+    def populate_keyboard_combo(self):
+        """Populate the keyboard comboBox with language options from CSV"""
+        # Clear existing items except the first "(no change)" option
+        self.ui.comboBox_keyboard.clear()
+        self.ui.comboBox_keyboard.addItem("(no change)", "")
+        
+        # Load languages from CSV
+        languages = load_languages_from_csv()
+        for formatted_option, kbd_code in languages:
+            self.ui.comboBox_keyboard.addItem(formatted_option, kbd_code)
 
     def run_setlang(self):
         """Run the set language command"""
@@ -200,6 +247,16 @@ class SettingsWindow(QMainWindow):
                 content = content.replace('RDP_SCALE="100"', f'RDP_SCALE="{scaling_value}"')
                 content = content.replace('RDP_SCALE="140"', f'RDP_SCALE="{scaling_value}"')
                 content = content.replace('RDP_SCALE="180"', f'RDP_SCALE="{scaling_value}"')
+                
+                # Update RDP_KBD setting
+                keyboard_data = self.ui.comboBox_keyboard.currentData()
+                if keyboard_data:  # Only update if a keyboard is selected (not "(no change)")
+                    kbd_string = f'/kbd:layout:{keyboard_data}'
+                    if re.search(r'RDP_KBD="[^"]*"', content):
+                        content = re.sub(r'RDP_KBD="[^"]*"', f'RDP_KBD="{kbd_string}"', content)
+                    else:
+                        # If RDP_KBD is missing, add it (optional, but not required by your spec)
+                        content += f'\nRDP_KBD="{kbd_string}"\n'
                 
                 with open(linoffice_conf_path, 'w') as f:
                     f.write(content)
