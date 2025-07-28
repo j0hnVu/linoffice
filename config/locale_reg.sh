@@ -71,7 +71,9 @@ create_registry_content() {
         [ -n "$MON_THOUSAND_SEP" ] && echo "\"sMonThousandSep\"=\"$MON_THOUSAND_SEP\""
         [ -n "$WIN_SHORT_DATE" ] && echo "\"sShortDate\"=\"$WIN_SHORT_DATE\""
         [ -n "$DATE_SEP" ] && echo "\"sDate\"=\"$DATE_SEP\""
-        echo "\"sTimeFormat\"=\"HH:mm:ss\""
+        echo "\"sTimeFormat\"=\"HH:mm:ss tt\""
+        echo "\"sShortTime\"=\"HH:mm tt\""
+        echo "\"iTime\"=\"1\""
         echo "\"iMeasure\"=\"0\""
     } >> "$TEMP_FILE"
 }
