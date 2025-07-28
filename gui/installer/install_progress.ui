@@ -41,7 +41,7 @@
     <widget class="QTextEdit" name="terminalOutput">
      <property name="font">
       <font>
-       <family>Courier New</family>
+       <family>sans-serif</family>
        <pointsize>10</pointsize>
       </font>
      </property>

@@ -55,8 +55,6 @@ def ansi_to_html(text):
 
     return text
 
-
-
 class Wizard(QWidget):
     def __init__(self):
         super().__init__()
@@ -119,6 +117,8 @@ class Wizard(QWidget):
             self.back_btn.setEnabled(False)
 
         elif index == 2:
+            os.chdir(os.path.dirname(os.getcwd())) # Change working directory to the one above where the main GUI lives
+            subprocess.Popen([sys.executable, 'mainwindow.py']) # Load main GUI when the installer finishes
             self.close()
 
     def prev_page(self):
@@ -167,9 +167,18 @@ class Wizard(QWidget):
             match = re.search(r'^Step (\d+):', clean_line)
             if match:
                 step_num = int(match.group(1))
-                percentage = int((step_num / 8) * 100)
-                self.progress_bar.setValue(percentage)
+                if step_num == 1:
+                    percentage = 0
+                elif 2 <= step_num <= 8:
+                    percentage = (step_num - 1) * 12.5
+                else:
+                    percentage = min(87.5, self.progress_bar.value())  # Cap at 87.5% for steps > 8
+                self.progress_bar.setValue(int(percentage))
 
+        # Check if process has finished and exited successfully
+        if self.process.state() == QProcess.NotRunning:
+            if self.process.exitStatus() == QProcess.NormalExit and self.process.exitCode() == 0:
+                self.progress_bar.setValue(100)
 
     def installation_finished(self):
         exit_code = self.process.exitCode()
@@ -260,11 +269,17 @@ class Wizard(QWidget):
                 self.process.kill()
 
         # Ask about removing the container
-        remove_reply = QMessageBox.question(
-            self, "Remove Container",
-            "Do you want to remove the container?",
-            QMessageBox.Yes | QMessageBox.No
-        )
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle("Remove Container?")
+        msg_box.setText("Do you want to remove the 'LinOffice' podman container and all its data?\nThis action cannot be undone.\n\nIf you are running this installer for the first time, you can select 'Yes'. If you have previously set up LinOffice and are running this installer again, you should select 'No' unless you explicitly want your Windows container including all its data to be deleted.")
+        msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg_box.setDefaultButton(QMessageBox.No)
+        msg_box.setIcon(QMessageBox.Warning)
+        yes_button = msg_box.button(QMessageBox.Yes)
+        yes_button.setText("Yes, delete")
+
+        # Show the message box and get the response
+        remove_reply = msg_box.exec()
 
         if remove_reply == QMessageBox.Yes:
             subprocess.run(["bash", "remove_container.sh"])

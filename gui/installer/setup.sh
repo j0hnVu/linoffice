@@ -29,15 +29,15 @@ exit_with_error() {
 }
 
 print_step "1" "Checking requirements"
-sleep 2
+sleep 1
 echo "normal output"
 print_info "info"
 print_error "warning"
-exit_with_error "error!!!"
+#exit_with_error "error!!!"
 print_step "2" "Installing dependencies"
-sleep 2
+sleep 1
 print_step "3" "Configuring environment"
-sleep 2
+sleep 1
 print_info "info"
 print_info "info"
 print_info "info"
@@ -45,12 +45,8 @@ print_info "info"
 print_info "info"
 print_info "info"
 print_step "4" "another step"
-sleep 2
 print_step "5" "another step"
-sleep 2
 print_step "6" "another step"
-sleep 2
 print_step "7" "another step"
-sleep 2
 print_step "8" "install desktop files"
 print_success "all done"
