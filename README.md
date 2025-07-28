@@ -23,15 +23,20 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 - [x] Tidy Quick Access pane in Windows File Explorer
 - [x] Option to deny network access to VM (after Office is all set up) by running `./linoffice.sh internet_off` or `./linoffice.sh internet_on`. This works by creating an invalid DNS server so that domains can't be resolved, which should be enough to prevent Windows and Office from "phoning home".
 - [x] Health check (`./setup.sh --healthcheck`)
-- [x] GUI (*experimental and unfinished*)
-    - [x] Launch Office apps once installed
-    - [x] Toggle settings such as display scaling, network on/off, auto-suspend on/off
-    - [x] Explicitly set regional settings, e.g. keyboard layout, decimal separator, date format, default currency symbol for the VM
-    - [x] Open Microsoft Office Language Settings (`setlang.exe`)
-    - [x] Quick actions e.g. run Windows Update, open Powershell / Command Prompt / Windows Explorer / Registry Editor
-    - [x] Troubleshooting e.g. force cleanup of Office lock files from `/home`, recreate .desktop files for the Office apps, reboot the Windows container
-    - [x] Uninstall (with or without removing the container and its volume)
-    - [x] Run a full Windows session via RDP or VNC
+
+**<details><summary>GUI (*experimental and unfinished*)</summary>**
+
+- [x] Launch Office apps once installed
+- [x] Toggle settings such as display scaling, network on/off, auto-suspend on/off
+- [x] Explicitly set regional settings, e.g. keyboard layout, decimal separator, date format, default currency symbol for the VM
+- [x] Open Microsoft Office Language Settings (`setlang.exe`)
+- [x] Quick actions e.g. run Windows Update, open Powershell / Command Prompt / Windows Explorer / Registry Editor
+- [x] Troubleshooting e.g. force cleanup of Office lock files from `/home`, recreate .desktop files for the Office apps, reboot the Windows container
+- [x] Uninstall (with or without removing the container and its volume)
+- [x] Run a full Windows session via RDP or VNC
+- [x] Run Publisher or Access Office apps, if installed
+
+</details>
 
 **<details><summary>Planned features</summary>**
     
@@ -39,9 +44,7 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 
 - [ ] GUI functions
     - [ ] Graphical install wizard replacing `setup.sh`
-    - [ ] For troubleshooting: Reboot Windows without restarting container (basically just `xfreerdp /app:program:cmd.exe,cmd:'/c shutdown /r /t 0'`)
-    - [ ] Run other Office apps, if installed, e.g. Access, Publisher, Visio, ...
-- [ ] APPDATA folder should not be hardcoded (in `setup.sh`, `linoffice.sh`, `mainwindow.py`, `installer.py`, `TimeSync.ps1`, `FirstRunRDP.ps1`, and `RegistryOverride.ps1`) or at least only hardcoded in one of them and then read by the others (like `uninstall.sh` is doing).
+- [ ] APPDATA folder should not be hardcoded (in `setup.sh`, `linoffice.sh`, `mainwindow.py`, `installer.py`, `linoffice.py`, `TimeSync.ps1`, `FirstRunRDP.ps1`, and `RegistryOverride.ps1`) or at least only hardcoded in one of them and then read by the others (like `uninstall.sh` is doing).
 - [ ] Deliver as Flatpak or AppImage, which would have these benefits:
     - Bundles dependencies such as FreeRDP and Podman-Compose; only Podman would need to be installed on the system already
     - Installation and uninstallation more straight-forward for Linux beginners
