@@ -138,8 +138,14 @@ class Wizard(QWidget):
             self.abort_button.clicked.connect(self.confirm_abort)
 
         self.process = QProcess(self)
+        # Get the path to the setup.sh located two directories above
+        setup_script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "setup.sh")
+        
+        # Debugging: Print the path to ensure it's correct
+        print(f"Setup script path: {setup_script_path}")
+
         self.process.setProgram("/bin/bash")
-        self.process.setArguments(["setup.sh"])
+        self.process.setArguments([setup_script_path])
         self.process.setProcessChannelMode(QProcess.MergedChannels)
         self.process.readyReadStandardOutput.connect(self.handle_output)
         self.process.finished.connect(self.installation_finished)
@@ -281,8 +287,27 @@ class Wizard(QWidget):
         # Show the message box and get the response
         remove_reply = msg_box.exec()
 
+        # THIS IS NOT WORKING YET, SCRIPT IS NOT EXECUTED!
         if remove_reply == QMessageBox.Yes:
-            subprocess.run(["bash", "remove_container.sh"])
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            script_path = os.path.join(script_dir, 'remove_container.sh')
+
+            # Try to open in a new terminal window (x-terminal-emulator, gnome-terminal, konsole)
+            terminal_cmds = [
+                ['x-terminal-emulator', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
+                ['konsole', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
+                ['gnome-terminal', '--', 'bash', '-c', f'bash "{script_path}"; exec bash'],
+                ['xfce4-terminal', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
+                ['lxterminal', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
+                ['mate-terminal', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
+                ['xterm', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
+            ]
+            for cmd in terminal_cmds:
+                try:
+                    subprocess.Popen(cmd)
+                    break
+                except FileNotFoundError:
+                    continue
 
         self.close()
 
