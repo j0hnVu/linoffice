@@ -48,6 +48,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="pushButton_healthcheck">
+       <property name="text">
+        <string>Run health check</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="pushButton_website">
        <property name="text">
         <string>Online help</string>

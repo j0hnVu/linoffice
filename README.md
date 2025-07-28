@@ -22,6 +22,7 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 - [x] Script to install updates for Windows and Office.
 - [x] Tidy Quick Access pane in Windows File Explorer
 - [x] Option to deny network access to VM (after Office is all set up) by running `./linoffice.sh internet_off` or `./linoffice.sh internet_on`. This works by creating an invalid DNS server so that domains can't be resolved, which should be enough to prevent Windows and Office from "phoning home".
+- [x] Health check (`./setup.sh --healthcheck`)
 - [x] GUI (*experimental and unfinished*)
     - [x] Launch Office apps once installed
     - [x] Toggle settings such as display scaling, network on/off, auto-suspend on/off
@@ -38,7 +39,6 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 
 - [ ] GUI functions
     - [ ] Graphical install wizard replacing `setup.sh`
-    - [ ] Health check (basically re-run the first part of the `setup.sh`)
     - [ ] For troubleshooting: Reboot Windows without restarting container (basically just `xfreerdp /app:program:cmd.exe,cmd:'/c shutdown /r /t 0'`)
     - [ ] Run other Office apps, if installed, e.g. Access, Publisher, Visio, ...
 - [ ] APPDATA folder should not be hardcoded (in `setup.sh`, `linoffice.sh`, `mainwindow.py`, `installer.py`, `TimeSync.ps1`, `FirstRunRDP.ps1`, and `RegistryOverride.ps1`) or at least only hardcoded in one of them and then read by the others (like `uninstall.sh` is doing).
@@ -200,6 +200,7 @@ If the `setup.sh` fails, try running it a second time. Sometimes that does the t
 If your Windows VM installs successfully but Office doesn't seem to be installed, you can trigger a re-installation of Office using `/.setup.sh --installoffice`. You can also manually install Office by accessing your virtual machine through `127.0.0.1:8006` in the browser.
 If you have installed Office but it wasn't picked up by the setup script, you can let it check for Office again by running `./setup.sh --firstrun`.
 If you need to re-create the .desktop files (app launchers) you can do it by running `./setup.sh --desktop`.
+If something breaks later on you can re-run the requirements check with `./setup.sh --healthcheck`.
 
 If you can't get the setup to work, please [create a bug report ("setup didn't work")](https://github.com/eylenburg/linoffice/issues) with these information:
 - The `windows_install.log` (in `~/.local/share/linoffice`)

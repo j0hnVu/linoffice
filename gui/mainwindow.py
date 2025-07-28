@@ -475,6 +475,7 @@ class TroubleshootingWindow(QMainWindow):
         self.ui.pushButton_logfile.clicked.connect(self.open_logfile)
         self.ui.pushButton_website.clicked.connect(self.open_website)
         self.ui.pushButton_uninstall.clicked.connect(self.run_uninstall)
+        self.ui.pushButton_healthcheck.clicked.connect(self.run_healthcheck)
 
     def run_cleanup_full(self):
         # Start the subprocess and capture the output
@@ -531,6 +532,28 @@ class TroubleshootingWindow(QMainWindow):
                 ['lxterminal', '-e', UNINSTALL_SCRIPT],
                 ['mate-terminal', '-e', UNINSTALL_SCRIPT],
                 ['xterm', '-e', UNINSTALL_SCRIPT],
+            ]
+            for cmd in terminal_cmds:
+                try:
+                    subprocess.Popen(cmd)
+                    break
+                except FileNotFoundError:
+                    continue
+
+    def run_healthcheck(self):
+        reply = QMessageBox.question(self, 'Confirm Healthcheck',
+                                     'Do yu want to run a healthcheck? This will run a few tests to see if your system is set up correctly.',
+                                     QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
+        if reply == QMessageBox.Yes:
+            # Try to open in a new terminal window (x-terminal-emulator, gnome-terminal, konsole)
+            terminal_cmds = [
+                ['x-terminal-emulator', '-e', 'bash', '-c', f'{SETUP_SCRIPT} --healthcheck; exec bash'],
+                ['konsole', '-e', 'bash', '-c', f'{SETUP_SCRIPT} --healthcheck; exec bash'],
+                ['gnome-terminal', '--', 'bash', '-c', f'{SETUP_SCRIPT} --healthcheck; exec bash'],
+                ['xfce4-terminal', '-e', 'bash', '-c', f'{SETUP_SCRIPT} --healthcheck; exec bash'],
+                ['lxterminal', '-e', 'bash', '-c', f'{SETUP_SCRIPT} --healthcheck; exec bash'],
+                ['mate-terminal', '-e', 'bash', '-c', f'{SETUP_SCRIPT} --healthcheck; exec bash'],
+                ['xterm', '-e', 'bash', '-c', f'{SETUP_SCRIPT} --healthcheck; exec bash'],
             ]
             for cmd in terminal_cmds:
                 try:
