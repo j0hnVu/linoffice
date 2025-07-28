@@ -136,7 +136,11 @@ Unfortunately it is not allowed to redistribute Microsoft software, otherwise I 
 
 ### Updating
 
-Once you have set up the VM using the `setup.sh`, the only thing that can really be updated is the the main script, `linoffice.sh`. Just download the newest version and replace the old script with it (and don't forget to make the new script executable). FreeRDP and Podman should receive updates from your package manager. Windows and Office should automatically receive updates, or you can run `./linoffice.sh update` to check for updates.
+- LinOffice: Download the newest version and replace the old files with it (e.g. in `~/.local/bin/linoffice` or wherever you originally saved it before installing). Don't delete your old files (as there are some files that will be created when you run the setup), just overwrite any existing ones.
+- Windows components: assuming you already have a working Windows VM, all the files in `linoffice/config/oem` will need to be manually copied again into `C:\OEM` in the Windows VM, overwriting any existing ones. In the RDP session (`./linoffice.sh windows`) you can access your Linux `/home` folder at `\\tsclient\home`.
+- FreeRDP, Podman, Podman-Compose: should receive updates from your package manager
+- `Dockur/Windows`: probably not needed to update this unless there is some bug fixed in the docker image; you can pull the newest docker image with `podman pull ghcr.io/dockur/windows:latest` and then recreate the container with `podman-compose --file ~/.local/bin/linoffice/config/compose.yaml down && podman-compose --file ~/.local/bin/linoffice/config/compose.yaml up -d` (make sure to adjust the file path as needed)
+- Windows & Office: should auto-update but otherwise you can run `./linoffice.sh update` to check and install updates from Microsoft
 
 ### Uninstall
 
