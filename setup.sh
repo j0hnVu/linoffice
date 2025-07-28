@@ -1107,9 +1107,9 @@ if [ "$DESKTOP_ONLY" = true ]; then
     print_info "Recreating desktop files..."
     if desktop_files; then
         mark_progress "$PROGRESS_DESKTOP"
-        print_success "Desktop files created successfully!"
+        print_success "App launchers (.desktop files) created successfully!"
     else
-        exit_with_error "Failed to create desktop files"
+        exit_with_error "Failed to create app launchers (.desktop files)"
     fi
     exit 0
 fi

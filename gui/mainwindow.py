@@ -7,6 +7,7 @@ import subprocess
 import os
 import csv
 import threading
+import re
 
 LINOFFICE_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'linoffice.sh'))
 SETUP_SCRIPT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'setup.sh'))
@@ -81,6 +82,10 @@ def load_languages_from_csv():
     except Exception as e:
         print(f"Error loading languages from CSV: {e}")
     return languages
+
+def strip_ansi_codes(text):
+    ansi_escape = re.compile(r'\x1b\[[0-9;]*m')
+    return ansi_escape.sub('', text)
 
 class MainWindow(QWidget):
     def __init__(self, parent=None):
@@ -472,10 +477,33 @@ class TroubleshootingWindow(QMainWindow):
         self.ui.pushButton_uninstall.clicked.connect(self.run_uninstall)
 
     def run_cleanup_full(self):
-        subprocess.Popen([LINOFFICE_SCRIPT, 'cleanup', '--full'])
+        # Start the subprocess and capture the output
+        process = subprocess.Popen(
+            [LINOFFICE_SCRIPT, 'cleanup', '--full'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        # Read the first line of output and show in QMessageBox
+        output_line = process.stdout.readline()
+        process.wait()
+        QMessageBox.information(self.ui, "Lock file cleanup", output_line.strip(), QMessageBox.Ok)
 
     def run_setup_desktop(self):
-        subprocess.Popen([SETUP_SCRIPT, '--desktop'])
+        # Start the subprocess and capture the output
+        process = subprocess.Popen(
+            [SETUP_SCRIPT, '--desktop'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        output_lines = process.stdout.readlines()
+        process.wait()
+        last_output_line = output_lines[-1].strip()
+        clean_output_line = strip_ansi_codes(last_output_line)
+        QMessageBox.information(self.ui, "Recreate app launchers", clean_output_line, QMessageBox.Ok)
 
     def run_reset(self):
         subprocess.Popen([LINOFFICE_SCRIPT, 'reset'])
