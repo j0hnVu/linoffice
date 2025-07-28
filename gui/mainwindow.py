@@ -1,6 +1,6 @@
 # This Python file uses the following encoding: utf-8
 import sys
-from PySide6.QtWidgets import QApplication, QWidget, QMainWindow, QMessageBox
+from PySide6.QtWidgets import QApplication, QWidget, QMainWindow, QMessageBox, QDialog, QVBoxLayout, QLabel, QPushButton
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QTimer
 import subprocess
@@ -95,6 +95,8 @@ class MainWindow(QWidget):
         self.status_timer = QTimer(self)
         self.status_timer.timeout.connect(self.update_container_status)
         self.status_timer.start(30000)  # 30,000 ms = 30 seconds
+        # Check container status and prompt user if not running
+        self.check_and_prompt_container()
 
     def load_ui(self, ui_file):
         loader = QUiLoader()
@@ -142,6 +144,20 @@ class MainWindow(QWidget):
         except Exception as e:
             status_text = f"Container: error"
         self.ui.label.setText(status_text)
+
+    def check_and_prompt_container(self):
+        try:
+            result = subprocess.run(['podman', 'ps', '--filter', 'name=LinOffice', '--format', '{{.Status}}'], capture_output=True, text=True, check=True)
+            if not result.stdout.strip():
+                # Container is not running, show dialog
+                dialog = QMessageBox(self)
+                dialog.setWindowTitle("Container Not Running")
+                dialog.setText("The LinOffice container is not running. When you start a Windows app for the first time, it might take a bit longer as the container needs to be started first.")
+                dialog.setStandardButtons(QMessageBox.Ok)
+                response = dialog.exec()
+        except subprocess.CalledProcessError as e:
+            print(f"DEBUG: podman ps error: {e.stderr}")
+            QMessageBox.critical(self, "Error", "Could not check LinOffice container status.")
 
 # Defining secondary windows
 class SettingsWindow(QMainWindow):
@@ -393,6 +409,28 @@ class ToolsWindow(QMainWindow):
         self.ui = loader.load(file, self)
         file.close()
 
+    def show_warning_dialog_rdp(self, action):
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Warning")
+        dialog.setText("Warning: Be careful when changing any Windows settings as it might break something.")
+        dialog.setStandardButtons(QMessageBox.Ok)
+        dialog.setIcon(QMessageBox.Information)
+        
+        # Execute the action only if OK is clicked
+        if dialog.exec() == QMessageBox.Ok:
+            action()
+
+    def show_warning_dialog_vnc(self, action):
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Warning")
+        dialog.setText("Warning: Be careful when changing any Windows settings as it might break something.\n\nNote: The VNC connection does not have clipboard sharing or /home folder sharing.\n\nThe password to log in is 'MyWindowsPassword'. Please sign out at the end (Start > MyWindowsUser > Sign out) as RDP connections might be blocked otherwise.")
+        dialog.setStandardButtons(QMessageBox.Ok)
+        dialog.setIcon(QMessageBox.Information)
+        
+        # Execute the action only if OK is clicked
+        if dialog.exec() == QMessageBox.Ok:
+            action()
+
     # Connect buttons in tools window with LinOffice script
     def connect_tools_buttons(self):
         if self.main_window:
@@ -401,8 +439,10 @@ class ToolsWindow(QMainWindow):
             self.ui.pushButton_regedit.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'regedit.exe'))
             self.ui.pushButton_cmd.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'cmd.exe'))
             self.ui.pushButton_explorer.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'explorer.exe'))
-            self.ui.pushButton_windows_rdp.clicked.connect(lambda: self.main_window.launch_linoffice_app('windows'))
-            self.ui.pushButton_windows_vnc.clicked.connect(self.open_vnc_in_browser)
+            self.ui.pushButton_access.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'msaccess.exe'))
+            self.ui.pushButton_publisher.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'mspub.exe'))
+            self.ui.pushButton_windows_rdp.clicked.connect(lambda: self.show_warning_dialog_rdp(lambda: self.main_window.launch_linoffice_app('windows')))
+            self.ui.pushButton_windows_vnc.clicked.connect(lambda: self.show_warning_dialog_vnc(self.open_vnc_in_browser))
 
     def open_vnc_in_browser(self):
         import webbrowser
