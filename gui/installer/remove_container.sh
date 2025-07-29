@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "This script will now delete the LinOffice podman container and all its data, using the command 'podman rm -f LinOffice && podman volume rm linoffice_data'"
+echo -e "This script will now delete the LinOffice podman container and all its data (i.e., the Windows virtual machine), using this command:\n 'podman rm -f LinOffice && podman volume rm linoffice_data'"
 
 read -p "Are you sure you want to proceed? (y/N): " response
 response=$(echo "$response" | tr '[:upper:]' '[:lower:]')
