@@ -291,23 +291,41 @@ class Wizard(QWidget):
         if remove_reply == QMessageBox.Yes:
             script_dir = os.path.dirname(os.path.abspath(__file__))
             script_path = os.path.join(script_dir, 'remove_container.sh')
-
-            # Try to open in a new terminal window (x-terminal-emulator, gnome-terminal, konsole)
+        
+            if not os.path.isfile(script_path):
+                QMessageBox.critical(
+                    self, "Error",
+                    f"Error. Podman container and volume have not been removed. Script not found: {script_path}",
+                    QMessageBox.Ok
+                )
+                return
+            if not os.access(script_path, os.X_OK):
+                os.chmod(script_path, 0o755)
+        
             terminal_cmds = [
-                ['x-terminal-emulator', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
-                ['konsole', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
-                ['gnome-terminal', '--', 'bash', '-c', f'bash "{script_path}"; exec bash'],
-                ['xfce4-terminal', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
-                ['lxterminal', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
-                ['mate-terminal', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
-                ['xterm', '-e', 'bash', '-c', f'bash "{script_path}"; exec bash'],
+                ['konsole', '--hold', '-e', 'bash', script_path],
+                ['gnome-terminal', '--', 'bash', script_path],
+                ['xfce4-terminal', '--hold', '-e', 'bash', script_path],
+                ['lxterminal', '-e', 'bash', script_path],
+                ['mate-terminal', '--disable-factory', '-e', 'bash', script_path],
+                ['xterm', '-hold', '-e', 'bash', script_path],
             ]
+        
+            success = False
             for cmd in terminal_cmds:
                 try:
-                    subprocess.Popen(cmd)
+                    subprocess.Popen(cmd, start_new_session=True)
+                    success = True
                     break
                 except FileNotFoundError:
                     continue
+        
+            if not success:
+                QMessageBox.critical(
+                    self, "Error",
+                    "Error. Podman container and volume have not been removed. Could not load terminal.",
+                    QMessageBox.Ok
+                )
 
         self.close()
 
