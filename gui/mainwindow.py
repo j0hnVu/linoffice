@@ -1,6 +1,6 @@
 # This Python file uses the following encoding: utf-8
 import sys
-from PySide6.QtWidgets import QApplication, QWidget, QMainWindow, QMessageBox, QDialog, QVBoxLayout, QLabel, QPushButton
+from PySide6.QtWidgets import QApplication, QWidget, QMainWindow, QMessageBox, QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QTextEdit
 from PySide6.QtUiTools import QUiLoader
 from PySide6.QtCore import QFile, QTimer
 import subprocess
@@ -443,6 +443,7 @@ class ToolsWindow(QMainWindow):
     # Connect buttons in tools window with LinOffice script
     def connect_tools_buttons(self):
         if self.main_window:
+            self.ui.pushButton_updateself.clicked.connect(self.run_self_updater)
             self.ui.pushButton_update.clicked.connect(lambda: self.main_window.launch_linoffice_app('update'))
             self.ui.pushButton_powershell.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'powershell.exe'))
             self.ui.pushButton_regedit.clicked.connect(lambda: self.main_window.launch_linoffice_app('manual', 'regedit.exe'))
@@ -456,6 +457,80 @@ class ToolsWindow(QMainWindow):
     def open_vnc_in_browser(self):
         import webbrowser
         webbrowser.open('http://127.0.0.1:8006')
+
+    def run_self_updater(self):
+        original_dir = os.getcwd()
+        parent_dir = os.path.abspath(os.path.join(original_dir, '..'))
+        updater_script = os.path.join(parent_dir, 'updater.py')
+
+        if not os.path.exists(updater_script):
+            QMessageBox.warning(self, "Error", "Updater script not found in parent directory.")
+            return
+
+        self.output_dialog = QDialog(self)
+        self.output_dialog.setWindowTitle("Updater Output")
+        self.output_dialog.setMinimumSize(600, 400)
+
+        layout = QVBoxLayout()
+
+        self.text_edit = QTextEdit()
+        self.text_edit.setReadOnly(True)
+        layout.addWidget(self.text_edit)
+
+        self.button_box = QHBoxLayout()
+        self.yes_button = QPushButton("Yes")
+        self.no_button = QPushButton("No")
+        self.ok_button = QPushButton("OK")
+        self.ok_button.setVisible(False)
+
+        self.button_box.addWidget(self.yes_button)
+        self.button_box.addWidget(self.no_button)
+        self.button_box.addWidget(self.ok_button)
+        layout.addLayout(self.button_box)
+
+        self.output_dialog.setLayout(layout)
+        self.output_dialog.show()
+
+        self.process = subprocess.Popen(
+            ['python', 'updater.py'],
+            cwd=parent_dir,
+            stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=1,
+            universal_newlines=True
+        )
+
+        self.waiting_for_input = False
+        self._read_output()
+
+        self.yes_button.clicked.connect(lambda: self._send_response('y\n'))
+        self.no_button.clicked.connect(lambda: self._send_response('n\n'))
+        self.ok_button.clicked.connect(self.output_dialog.accept)
+
+    def _read_output(self):
+        def read_stream():
+            for line in self.process.stdout:
+                self.text_edit.append(line.rstrip())
+                if "(y/n)" in line:
+                    self.waiting_for_input = True
+                    self.yes_button.setVisible(True)
+                    self.no_button.setVisible(True)
+            self.process.wait()
+            self.yes_button.setVisible(False)
+            self.no_button.setVisible(False)
+            self.ok_button.setVisible(True)
+
+        from threading import Thread
+        Thread(target=read_stream, daemon=True).start()
+
+    def _send_response(self, response):
+        if self.waiting_for_input and self.process and self.process.stdin:
+            self.process.stdin.write(response)
+            self.process.stdin.flush()
+            self.waiting_for_input = False
+            self.yes_button.setVisible(False)
+            self.no_button.setVisible(False)
 
 class TroubleshootingWindow(QMainWindow):
     def __init__(self, parent=None):
