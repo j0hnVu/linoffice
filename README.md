@@ -24,8 +24,9 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 - [x] Option to deny network access to VM (after Office is all set up) by running `./linoffice.sh internet_off` or `./linoffice.sh internet_on`. This works by creating an invalid DNS server so that domains can't be resolved, which should be enough to prevent Windows and Office from "phoning home".
 - [x] Health check (`./setup.sh --healthcheck`)
 
-**<details><summary>GUI (*experimental and unfinished*)</summary>**
+**<details><summary>GUI (*experimental*)</summary>**
 
+- [x] Graphical install wizard replacing `setup.sh`
 - [x] Launch Office apps once installed
 - [x] Toggle settings such as display scaling, network on/off, auto-suspend on/off
 - [x] Explicitly set regional settings, e.g. keyboard layout, decimal separator, date format, default currency symbol for the VM
@@ -41,9 +42,7 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 **<details><summary>Planned features</summary>**
     
 ### Planned features
-
-- [ ] GUI functions
-    - [ ] Graphical install wizard replacing `setup.sh`
+   
 - [ ] APPDATA folder should not be hardcoded (in `setup.sh`, `linoffice.sh`, `mainwindow.py`, `installer.py`, `linoffice.py`, `TimeSync.ps1`, `FirstRunRDP.ps1`, and `RegistryOverride.ps1`) or at least only hardcoded in one of them and then read by the others (like `uninstall.sh` is doing).
 - [ ] Deliver as Flatpak or AppImage, which would have these benefits:
     - Bundles dependencies such as FreeRDP and Podman-Compose; only Podman would need to be installed on the system already
@@ -193,7 +192,9 @@ You can set the display scaling by modifying the value for `RDP_SCALE` in the `l
 
 ### Using the GUI
 
-Currently, the GUI is still a work in progress, but it mostly works. To run it you need to have `python3` and `pyside6` installed on your system (the exact names of the packages differ for every distro). Download the [latest git version](https://github.com/eylenburg/linoffice/archive/refs/heads/main.zip) of LinOffice and unpack it in your LinOffice folder. Then, navigate to the `gui` folder and launch the GUI with `python3 mainwindow.py`. If you already have a working VM you may need to copy `dns_on.bat`, `dns_off.bat` and `RegistryOverride.ps1` (in `config/oem`) to your VM's `C:\OEM` folder manually for some of the setting changes to actually apply.
+Currently, the GUI is still a work in progress, but it mostly works. To run it you need to have `python3` and `pyside6` installed on your system (the exact names of the packages differ for every distro). Download the [latest git version](https://github.com/eylenburg/linoffice/archive/refs/heads/main.zip) of LinOffice and unpack it in your LinOffice folder. Then, navigate to the `gui` folder and launch the GUI with `python3 linoffice.py`. 
+
+(If you already have a working VM from release 1.0.7 or earlier you may need to copy `dns_on.bat`, `dns_off.bat` and `RegistryOverride.ps1` (in `config/oem`) to your VM's `C:\OEM` folder manually, otherwise some of the settings in the GUI don't work.)
 
 # Troubleshooting
 
