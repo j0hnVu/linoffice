@@ -157,12 +157,16 @@ class MainWindow(QWidget):
                 # Container is not running, show dialog
                 dialog = QMessageBox(self)
                 dialog.setWindowTitle("Container Not Running")
-                dialog.setText("The LinOffice container is not running. When you start a Windows app for the first time, it might take a bit longer as the container needs to be started first.")
-                dialog.setStandardButtons(QMessageBox.Ok)
+                dialog.setText("The LinOffice container is not running. Would you like to start the container now? Otherwise, starting an Office app may take longer.")
+                dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+                dialog.setDefaultButton(QMessageBox.Yes)
                 response = dialog.exec()
+                if response == QMessageBox.Yes:
+                    # Run linoffice.sh --startcontainer in the background
+                    threading.Thread(target=lambda: subprocess.Popen([LINOFFICE_SCRIPT, '--startcontainer'])).start()
         except subprocess.CalledProcessError as e:
             print(f"DEBUG: podman ps error: {e.stderr}")
-            QMessageBox.critical(self, "Error", "Could not check LinOffice container status.")
+            QMessageBox.critical(self, "Error", "Could not check container status.")
 
 # Defining secondary windows
 class SettingsWindow(QMainWindow):
