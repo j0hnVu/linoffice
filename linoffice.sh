@@ -734,6 +734,7 @@ function waRunCommand() {
         printf "\033[1m./linoffice.sh update\033[0m -> runs an update script for Windows in Powershell\n"
         printf "\033[1m./linoffice.sh reset\033[0m -> kills all FreeRDP processes, cleans up Office lock files, and reboots the Windows VM\n"
         printf "\033[1m./linoffice.sh cleanup [--full|--reset]\033[0m -> cleans up Office lock files (such as ~\$file.xlsx) in the home folder and removable media; --full cleans all files regardless of creation date, --reset resets the last cleanup timestamp\n"
+        printf "\033[1m./linoffice.sh --startcontainer\033[0m -> will start the Windows container if it is not running and not execute anything else\n"
         exit 0
     fi
 
@@ -1053,8 +1054,21 @@ waLastRun
 waLoadConfig
 waGetFreeRDPCommand
 waCheckContainerRunning
-waTimeSync
-waRunCommand "$@"
+
+# Check if --startcontainer flag is present
+START_CONTAINER=false
+for arg in "$@"; do
+    if [[ "$arg" == "--startcontainer" ]]; then
+        START_CONTAINER=true
+        break
+    fi
+done
+
+# Skip waTimeSync and waRunCommand if --startcontainer is used
+if [[ "$START_CONTAINER" != "true" ]]; then
+    waTimeSync
+    waRunCommand "$@"
+fi
 
 if [[ "$AUTOPAUSE" == "on" ]]; then
     waCheckIdle
