@@ -2,7 +2,8 @@
 import sys
 from PySide6.QtWidgets import QApplication, QWidget, QMainWindow, QMessageBox, QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QTextEdit
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile, QTimer
+from PySide6.QtCore import QFile, QTimer, QProcess
+from PySide6.QtGui import QTextCursor
 import subprocess
 import os
 import csv
@@ -464,11 +465,11 @@ class ToolsWindow(QMainWindow):
         updater_script = os.path.join(parent_dir, 'updater.py')
 
         if not os.path.exists(updater_script):
-            QMessageBox.warning(self, "Error", "Updater script not found in parent directory.")
+            QMessageBox.warning(self, "Error", "Updater script not found.")
             return
 
         self.output_dialog = QDialog(self)
-        self.output_dialog.setWindowTitle("Updater Output")
+        self.output_dialog.setWindowTitle("Updating LinOffice...")
         self.output_dialog.setMinimumSize(600, 400)
 
         layout = QVBoxLayout()
@@ -491,46 +492,169 @@ class ToolsWindow(QMainWindow):
         self.output_dialog.setLayout(layout)
         self.output_dialog.show()
 
-        self.process = subprocess.Popen(
-            ['python', 'updater.py'],
-            cwd=parent_dir,
-            stdout=subprocess.PIPE,
-            stdin=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            bufsize=1,
-            universal_newlines=True
-        )
-
+        # Initialize state
         self.waiting_for_input = False
-        self._read_output()
-
-        self.yes_button.clicked.connect(lambda: self._send_response('y\n'))
-        self.no_button.clicked.connect(lambda: self._send_response('n\n'))
-        self.ok_button.clicked.connect(self.output_dialog.accept)
-
-    def _read_output(self):
-        def read_stream():
-            for line in self.process.stdout:
-                self.text_edit.append(line.rstrip())
-                if "(y/n)" in line:
-                    self.waiting_for_input = True
-                    self.yes_button.setVisible(True)
-                    self.no_button.setVisible(True)
-            self.process.wait()
-            self.yes_button.setVisible(False)
-            self.no_button.setVisible(False)
+        
+        # Create QProcess
+        self.process = QProcess(self)
+        
+        # Set working directory
+        self.process.setWorkingDirectory(parent_dir)
+        
+        # Set environment to force unbuffered output
+        env = self.process.processEnvironment()
+        env.insert("PYTHONUNBUFFERED", "1")
+        self.process.setProcessEnvironment(env)
+        
+        # Connect signals
+        self.process.readyReadStandardOutput.connect(self._handle_stdout)
+        self.process.readyReadStandardError.connect(self._handle_stderr)
+        self.process.finished.connect(self._handle_finished)
+        self.process.started.connect(self._handle_started)
+        self.process.errorOccurred.connect(self._handle_error)
+        
+        # Connect buttons
+        self.yes_button.clicked.connect(lambda: self._send_response('y'))
+        self.no_button.clicked.connect(lambda: self._send_response('n'))
+        self.ok_button.clicked.connect(self._close_updater_dialog)
+        
+        # Start the process
+        program = sys.executable
+        arguments = ['-u', 'updater.py']
+        
+        self.process.start(program, arguments)
+        
+        # Check if process started successfully
+        if not self.process.waitForStarted(3000):
+            self.text_edit.append("Failed to start updater process")
             self.ok_button.setVisible(True)
 
-        from threading import Thread
-        Thread(target=read_stream, daemon=True).start()
+    def _handle_started(self):
+        """Called when process starts successfully"""
+        pass  # No output needed
+
+    def _handle_stdout(self):
+        """Handle stdout output from process"""
+        if not self.process:
+            return
+            
+        data = self.process.readAllStandardOutput()
+        if data:
+            text = bytes(data).decode('utf-8', errors='replace')
+            
+            # Split into lines and process each
+            lines = text.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+            
+            for line in lines:
+                if line.strip():  # Only process non-empty lines
+                    self.text_edit.append(line)
+                    
+                    # Check for input prompts
+                    lower_line = line.lower()
+                    if "(y/n)" in lower_line or "update?" in lower_line:
+                        self.waiting_for_input = True
+                        self.yes_button.setVisible(True)
+                        self.no_button.setVisible(True)
+            
+            # Auto-scroll to bottom
+            self._scroll_to_bottom()
+
+    def _handle_stderr(self):
+        """Handle stderr output from process"""
+        if not self.process:
+            return
+            
+        data = self.process.readAllStandardError()
+        if data:
+            text = bytes(data).decode('utf-8', errors='replace')
+            if text.strip():
+                self.text_edit.append(f"ERROR: {text.strip()}")
+                self._scroll_to_bottom()
+
+    def _handle_finished(self, exit_code, exit_status):
+        """Handle process completion"""
+        self.text_edit.append(f"\nUpdater finished")
+        self.yes_button.setVisible(False)
+        self.no_button.setVisible(False)
+        self.ok_button.setVisible(True)
+        self.waiting_for_input = False
+        self._scroll_to_bottom()
+
+        # Restore original working directory when process finishes
+        if hasattr(self, 'original_dir'):
+            os.chdir(self.original_dir)
+
+    def _handle_error(self, error):
+        """Handle process errors"""
+        error_messages = {
+            QProcess.FailedToStart: "Failed to start the updater process",
+            QProcess.Crashed: "Updater process crashed",
+            QProcess.Timedout: "Updater process timed out",
+            QProcess.WriteError: "Write error to updater process",
+            QProcess.ReadError: "Read error from updater process", 
+            QProcess.UnknownError: "Unknown error with updater process"
+        }
+        
+        error_msg = error_messages.get(error, f"Unknown error: {error}")
+        self.text_edit.append(error_msg)
+        self.ok_button.setVisible(True)
+        self._scroll_to_bottom()
+
+    def _scroll_to_bottom(self):
+        """Scroll text edit to bottom"""
+        cursor = self.text_edit.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        self.text_edit.setTextCursor(cursor)
 
     def _send_response(self, response):
-        if self.waiting_for_input and self.process and self.process.stdin:
-            self.process.stdin.write(response)
-            self.process.stdin.flush()
-            self.waiting_for_input = False
-            self.yes_button.setVisible(False)
-            self.no_button.setVisible(False)
+        """Send response to the process"""
+        if not self.waiting_for_input:
+            return
+            
+        if not self.process or self.process.state() != QProcess.Running:
+            self.text_edit.append("Process is not running")
+            return
+        
+        try:
+            # Send the response
+            response_data = (response + '\n').encode('utf-8')
+            bytes_written = self.process.write(response_data)
+            
+            if bytes_written != -1:
+                self.waiting_for_input = False
+                self.yes_button.setVisible(False)
+                self.no_button.setVisible(False)
+            
+            self._scroll_to_bottom()
+            
+        except Exception as e:
+            self.text_edit.append(f"Error sending response: {e}")
+            self._scroll_to_bottom()
+
+    def _close_updater_dialog(self):
+        """Close the dialog and clean up"""
+        if hasattr(self, 'process') and self.process:
+            if self.process.state() == QProcess.Running:
+                self.process.terminate()
+                if not self.process.waitForFinished(3000):
+                    self.process.kill()
+            
+            # Disconnect all signals to prevent issues
+            try:
+                self.process.readyReadStandardOutput.disconnect()
+                self.process.readyReadStandardError.disconnect()
+                self.process.finished.disconnect()
+                self.process.started.disconnect()
+                self.process.errorOccurred.disconnect()
+            except:
+                pass
+        
+        # Restore original working directory when process finishes
+        if hasattr(self, 'original_dir'):
+            os.chdir(self.original_dir)
+
+        if hasattr(self, 'output_dialog'):
+            self.output_dialog.accept()
 
 class TroubleshootingWindow(QMainWindow):
     def __init__(self, parent=None):
