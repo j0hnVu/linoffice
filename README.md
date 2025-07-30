@@ -102,7 +102,7 @@ Dependencies that need to be installed:
 - Arch: `sudo pacman -Syu podman podman-compose freerdp python pyside6`
 - OpenSUSE: `sudo zypper install podman podman-compose freerdp python3 python3-pyside6`
 - Fedora: `sudo dnf install podman podman-compose freerdp python3 python-pyside6`
-- Fedora Atomic: `rpm-ostree install podman-compose freerdp`, then reboot (podman is already preinstalled)
+- Fedora Atomic: `rpm-ostree install podman-compose freerdp python-pyside6`, then reboot (podman and python3 are already preinstalled)
 - OpenMandriva: `sudo dnf install podman podman-compose freerdp python pyside6`
 
 Podman-Compose and PySide6 can also be installed [via `pip`](https://pip.pypa.io/en/stable/installation/).
@@ -133,11 +133,9 @@ Unfortunately it is not allowed to redistribute Microsoft software, otherwise I 
 
 ### Updating
 
-- LinOffice: Download the newest version and replace the old files with it (e.g. in `~/.local/bin/linoffice` or wherever you originally saved it before installing). Don't delete your old files (as there are some files that will be created when you run the setup), just overwrite any existing ones.
-- Windows components: assuming you already have a working Windows VM, all the files in `linoffice/config/oem` will need to be manually copied again into `C:\OEM` in the Windows VM, overwriting any existing ones. In the RDP session (`./linoffice.sh windows`) you can access your Linux `/home` folder at `\\tsclient\home`.
-- FreeRDP, Podman, Podman-Compose: should receive updates from your package manager
-- `Dockur/Windows`: probably not needed to update this unless there is some bug fixed in the docker image; you can pull the newest docker image with `podman pull ghcr.io/dockur/windows:latest` and then recreate the container with `podman-compose --file ~/.local/bin/linoffice/config/compose.yaml down && podman-compose --file ~/.local/bin/linoffice/config/compose.yaml up -d` (make sure to adjust the file path as needed)
-- Windows & Office: should auto-update but otherwise you can run `./linoffice.sh update` to check and install updates from Microsoft
+- LinOffice: There's a built-in updater in the GUI. Otherwise, you can manually download the newest version and replace the old files with it. Don't delete all of your old files (as there are some files that will be created during the initial setup), just overwrite any existing ones.
+    - If you already have a working Windows VM from LinOffice v1.0.7 and below, and you want to update, all the files in `linoffice/config/oem` will need to be manually copied again into `C:\OEM` in the Windows VM, overwriting any existing ones. In the RDP session (`./linoffice.sh windows`) you can access your Linux `/home` folder at `\\tsclient\home`.
+- Windows & Office: Should auto-update but there's also an update script in the GUI (or you can run `./linoffice.sh update` from the terminal.)
 
 ### Uninstall
 
