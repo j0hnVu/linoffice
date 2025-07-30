@@ -9,6 +9,7 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 # Screenshot
 
 ![ScreenShot](screenshot.png).
+<img src="https://raw.githubusercontent.com/eylenburg/linoffice/refs/heads/main/screenshot2.png" width="394" height="398" />
 
 # Features
 
