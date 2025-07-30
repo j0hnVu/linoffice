@@ -193,6 +193,7 @@ class Wizard(QWidget):
         if exit_code == 0:
             self.terminal_output.append("\nInstallation finished.")
             self.next_btn.setEnabled(True)
+            self.abort_button.setEnabled(False)
         else:
             self.show_failure_dialog()
 
