@@ -13,30 +13,21 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 
 # Features
 
-- [x] Automatic non-interactive setup script
-- [x] Run Microsoft Office apps as if they were native Linux apps
-- [x] Office apps have access to /home folder and Linux clipboard
+- [x] **Automatic non-interactive setup**
+- [x] **Run Microsoft Office apps as if they were native Linux apps**
+- [x] **Office apps have access to /home folder and Linux clipboard**
+- [x] Run Publisher or Access, if manually installed by user
+- [x] Quickly access useful tools such as Powershell, Command Prompt, Windows Explorer, Registry Editor, Office Language Settings
+- [x] Run a full Windows session via RDP or VNC
 - [x] Automatic suspend of the Windows container when inactive, resume when starting an Office app
 - [x] Automatic deletion of Office lock files (like `~$file.docx`)
-- [x] Force time sync in Windows after Linux host wakes up from sleep, to avoid time drift
-- [x] International support: Automatic detection of language, date format, thousand and decimal separator, currency symbol, keyboard layout etc. in the Linux system to apply the same settings to Windows (so that you don't have to deal with mm/dd/yyyy if you're not American!). Also avoids geo-restrictions for the Office installation. The time zone is set to UTC for simplicity and to avoid issues with timestamps when saving in the /home folder
-- [x] Script to install updates for Windows and Office.
+- [x] Force time sync in Windows after Linux host wakes up from sleep, to avoid time drift (time zone is always set to UTC for simplicity)
+- [x] Automatic detection of language, date format, thousand and decimal separator, currency symbol, keyboard layout etc
+- [x] Toggle settings such as display scaling, auto-suspend on/off,  network on/off (to prevent Windows and Office from "phoning home") 
+- [x] Circumvent geo-blocking for the Office installation
+- [x] Install updates for Windows and Office
 - [x] Tidy Quick Access pane in Windows File Explorer
-- [x] Option to deny network access to VM (after Office is all set up) by running `./linoffice.sh internet_off` or `./linoffice.sh internet_on`. This works by creating an invalid DNS server so that domains can't be resolved, which should be enough to prevent Windows and Office from "phoning home".
-- [x] Health check (`./setup.sh --healthcheck`)
-
-**<details><summary>GUI (*experimental*)</summary>**
-
-- [x] Graphical install wizard replacing `setup.sh`
-- [x] Launch Office apps once installed
-- [x] Toggle settings such as display scaling, network on/off, auto-suspend on/off
-- [x] Explicitly set regional settings, e.g. keyboard layout, decimal separator, date format, default currency symbol for the VM
-- [x] Open Microsoft Office Language Settings (`setlang.exe`)
-- [x] Quick actions e.g. run Windows Update, open Powershell / Command Prompt / Windows Explorer / Registry Editor
-- [x] Troubleshooting e.g. force cleanup of Office lock files from `/home`, recreate .desktop files for the Office apps, reboot the Windows container
-- [x] Uninstall (with or without removing the container and its volume)
-- [x] Run a full Windows session via RDP or VNC
-- [x] Run Publisher or Access Office apps, if installed
+- [x] Troubleshooting functions e.g. force cleanup of Office lock files, recreate .desktop files for the Office apps, reboot the Windows container, container health check
 
 </details>
 
