@@ -87,25 +87,26 @@ Hardware requirements:
 
 ### Dependencies
 
-Dependencies that need to be installed (they should be in the repos of most distributions):
+Dependencies that need to be installed:
 - **Podman**
 - **Podman-Compose**
 - **FreeRDP**  (v3)
+- **Python3** (optional, for the GUI)
+- **PySide6** (optional, for the GUI)
 
 <details><summary>How to install the dependencies</summary>
 
-- Ubuntu & Debian: `sudo apt install podman podman-compose freerdp3` 
-  - make sure your repo has FreeRDP v3 is only available from Debian 13 and Ubuntu 24.04 onwards; in older versions you need to use backports or install the Flatpak version of FreeRDP (see below).
-- Arch: `sudo pacman -Syu podman podman-compose freerdp`
-- OpenSUSE: `sudo zypper install podman podman-compose freerdp`
-- Fedora & OpenMandriva: `sudo dnf install podman podman-compose freerdp`
+- Ubuntu & Debian: `sudo apt install podman podman-compose freerdp3 python3 pyside6` 
+  - make sure your repo has FreeRDP v3 is only available from Debian 13 and Ubuntu 24.04 onwards; in older versions you need to use backports or install the Flatpak version of FreeRDP
+  - PySide6 is only available from Debian 13 and Ubuntu 24.10 (!) onwards; in older versions you need to use backports or install them via `pip`
+- Arch: `sudo pacman -Syu podman podman-compose freerdp python pyside6`
+- OpenSUSE: `sudo zypper install podman podman-compose freerdp python3 python3-pyside6`
+- Fedora: `sudo dnf install podman podman-compose freerdp python3 python-pyside6`
 - Fedora Atomic: `rpm-ostree install podman-compose freerdp`, then reboot (podman is already preinstalled)
-- Other immutable distros (e.g. OpenSUSE MicroOS, SteamOS):
-  - Podman is hopefully preinstalled, check with `podman --version`
-  - Podman-Compose can be installed [via `pip`](https://github.com/containers/podman-compose?tab=readme-ov-file#pip) or manually [installed in your /home directory](https://github.com/containers/podman-compose?tab=readme-ov-file#manual)
-  - FreeRDP can be [installed as a Flatpak](https://flathub.org/apps/com.freerdp.FreeRDP), but make sure to give it permission to access the /home folder.
+- OpenMandriva: `sudo dnf install podman podman-compose freerdp python pyside6`
 
-Some dependencies that WinApps requires, e.g. netcat, ipconfig, dialog, libnotify, are not necessary to run LinOffice.
+Podman-Compose and PySide6 can also be installed [via `pip`](https://pip.pypa.io/en/stable/installation/).
+FreeRDP can also be installed as a [Flatpak](https://flathub.org/apps/com.freerdp.FreeRDP), but make sure to give it permission to access the /home folder.
 
 </details>
 
@@ -115,18 +116,12 @@ First, install the dependencies (see above).
 
 Then:
 1. Download this repo (e.g. [release version](https://github.com/eylenburg/linoffice/releases) or [latest git version](https://github.com/eylenburg/linoffice/archive/refs/heads/main.zip))
-2. Unzip and save in a convenient folder (e.g. `~/bin` or `~/.local/bin`)
-3. Make sure that `setup.sh` is executable (`chmod +x setup.sh`, or in Dolphin: right-click -> Properties -> Permissions -> [x] Allow executing file as program) 
-4. Run the setup (`./setup.sh`).
+2. Unzip and save in a convenient folder (e.g. `~/.local/bin/linoffice`)
+3. Either run the setup script (`chmod +x setup.sh && ./setup.sh`) or start the GUI which will automatically set things up (`python3 gui/linoffice.py`)
 
-To do this with one command:
-```
-mkdir -p ~/.local/bin/linoffice && wget -qO- https://github.com/eylenburg/linoffice/archive/refs/heads/main.zip | funzip | tar -x -C ~/.local/bin/linoffice --strip-components=1 && chmod +x ~/.local/bin/linoffice/setup.sh && ~/.local/bin/linoffice/setup.sh
-```
+The installation should do everything automatically but will take quite a while. You need to download about 8 GB in total and wait until both Windows and Office are installed. In my experience, on a modern laptop (2023 mid-range AMD Ryzen CPU) and with fast Internet (250 Mbps download), it took about 15 minutes all in (breakdown: 3 minutes Windows download, 8 minutes Windows install, 4 minutes Office download and install).
 
-The setup.sh should do everything automatically but will take quite a while. You need to download about 8 GB in total and wait until both Windows and Office are installed. In my experience, on a modern laptop (2023 mid-range AMD Ryzen CPU) and with fast Internet (250 Mbps download), it took about 15 minutes all in (breakdown: 3 minutes Windows download, 8 minutes Windows install, 4 minutes Office download and install).
-
-At the moment, the setup script is still **EXPERIMENTAL**. If it succeeds without issues, please [share your system setup](https://github.com/eylenburg/linoffice/issues/15) which will be very helpful in order to know where LinOffice works out of the box. 
+If the setup succeeds without issues, please [share your system setup](https://github.com/eylenburg/linoffice/issues/15) which will be very helpful in order to know where LinOffice works out of the box. 
 
 <details><summary>Notes on the Windows version</summary>
 
@@ -146,12 +141,12 @@ Unfortunately it is not allowed to redistribute Microsoft software, otherwise I 
 
 ### Uninstall
 
-You can run the `uninstall.sh` to remove everything.
+You can run the `uninstall.sh` to remove everything or click on the Uninstall button in the "Troubleshooting" menu.
 
 <details><summary>Where are the files saved?</summary>
 
 If you want to manually remove the files:
-- The self-contained folder where you have saved the `linoffice.sh` script. 
+- The self-contained folder where you have saved the `linoffice.sh` script
 - The appdata folder for temporary files is in `~/.local/share/linoffice`
 - The `.desktop files` (Excel, Onenote, Outlook, Powerpoint, Word) will be created in `~/.local/share/applications`
 - The Podman containers, which include the Windows VM, can be removed with `podman rm -f LinOffice && podman volume rm linoffice_data`
@@ -168,17 +163,22 @@ After installation, you should find the launchers for the Office applications in
 
 You can open files from your file manager with Right-click -> Open with. 
 
-### In the terminal
-- `./linoffice.sh [excel|word|powerpoint|onenote|outlook]`: runs one of the predefined Office applications
-- `./linoffice.sh manual [msaccess.exe|mspub.exe]`: run Microsoft Access or Microsoft Publisher, if installed (they are not part of the default Office version installed by LinOffice)
-- `./linoffice.sh manual [explorer.exe|regedit.exe|powershell.exe|cmd.exe]`: runs a specific Windows app in the Windows PATH
-- `./linoffice.sh manual "C:\Program Files\Microsoft Office\root\Office16\SETLANG.EXE"`: like above, but for any application (here: Microsoft Office Language Preferences tool)
-- `./linoffice.sh windows`:  shows the whole Windows desktop in an RDP session
-- `./linoffice.sh update`: runs an update script for Windows in Powershell
-- `./linoffice.sh reset`: kills all FreeRDP processes, cleans up Office lock files, and reboots the Windows VM
-- `./linoffice.sh cleanup [--full|--reset]`: cleans up Office lock files (such as ~$file.xlsx) in the home folder and removable media; `--full` cleans all files regardless of creation date, `--reset` resets the last cleanup timestamp
+### Using the GUI
 
-If you are using the terminal commands often, you might want to create an alias by running `echo "alias linoffice='/home/user/.local/bin/linoffice/linoffice.sh'" >> ~/.bashrc && source ~/.bashrc` - but make sure to adjust the username and path to where your `linoffice.sh` script is saved. This will enable you to run the LinOffice script from anywhere, for example you'll be able to run `linoffice windows` instead of navigating to the correct folder and then running `./linoffice.sh windows`.
+You will find a launcher for "LinOffice" in your app menu.
+
+### Using the terminal
+
+If you are using the terminal commands often, you might want to create an alias by running `echo "alias linoffice='/home/user/.local/bin/linoffice/linoffice.sh'" >> ~/.bashrc && source ~/.bashrc` - but make sure to adjust the username and path to where your `linoffice.sh` script is saved. This will enable you to run the LinOffice script from anywhere with the `linoffice` command.
+
+- `linoffice [excel|word|powerpoint|onenote|outlook]`: runs one of the predefined Office applications
+- `linoffice manual [msaccess.exe|mspub.exe]`: run Microsoft Access or Microsoft Publisher, if installed (they are not part of the default Office version installed by LinOffice)
+- `linoffice manual [explorer.exe|regedit.exe|powershell.exe|cmd.exe]`: runs a specific Windows app in the Windows PATH
+- `linoffice manual "C:\Program Files\Microsoft Office\root\Office16\SETLANG.EXE"`: like above, but for any application (here: Microsoft Office Language Preferences tool)
+- `linoffice windows`:  shows the whole Windows desktop in an RDP session
+- `linoffice update`: runs an update script for Windows in Powershell
+- `linoffice reset`: kills all FreeRDP processes, cleans up Office lock files, and reboots the Windows VM
+- `linoffice cleanup [--full|--reset]`: cleans up Office lock files (such as ~$file.xlsx) in the home folder and removable media; `--full` cleans all files regardless of creation date, `--reset` resets the last cleanup timestamp
 
 ### Office activation 
 
@@ -186,25 +186,16 @@ You will need an Office 2024 license key or Office 365 subscription to use Offic
 
 The **Microsoft Activation Scripts (MAS)** will also work if you have, let's say, trouble with activation - just run `./linoffice.sh manual powershell.exe` from the script's directory to open a Powershell window where you can then paste the command to run MAS. 
 
-### Display scaling
-
-You can set the display scaling by modifying the value for `RDP_SCALE` in the `linoffice.conf.default` (before installation) or `linoffice.conf` (after installation). 
-
-### Using the GUI
-
-Currently, the GUI is still a work in progress, but it mostly works. To run it you need to have `python3` and `pyside6` installed on your system (the exact names of the packages differ for every distro). Download the [latest git version](https://github.com/eylenburg/linoffice/archive/refs/heads/main.zip) of LinOffice and unpack it in your LinOffice folder. Then, navigate to the `gui` folder and launch the GUI with `python3 linoffice.py`. 
-
-(If you already have a working VM from release 1.0.7 or earlier you may need to copy `dns_on.bat`, `dns_off.bat` and `RegistryOverride.ps1` (in `config/oem`) to your VM's `C:\OEM` folder manually, otherwise some of the settings in the GUI don't work.)
 
 # Troubleshooting
 
-### Problems with the setup script
+### Problems with the setup
 
-If the `setup.sh` fails, try running it a second time. Sometimes that does the trick.
+If the setup fails, try running it a second time. Sometimes that does the trick.
 If your Windows VM installs successfully but Office doesn't seem to be installed, you can trigger a re-installation of Office using `/.setup.sh --installoffice`. You can also manually install Office by accessing your virtual machine through `127.0.0.1:8006` in the browser.
 If you have installed Office but it wasn't picked up by the setup script, you can let it check for Office again by running `./setup.sh --firstrun`.
-If you need to re-create the .desktop files (app launchers) you can do it by running `./setup.sh --desktop`.
-If something breaks later on you can re-run the requirements check with `./setup.sh --healthcheck`.
+If you need to re-create the .desktop files (app launchers) you can do it by running `./setup.sh --desktop` (or the equivalent button in the GUI)
+If something breaks later on you can re-run the requirements check with `./setup.sh --healthcheck` (or the equivalent button in the GUI).
 
 If you can't get the setup to work, please [create a bug report ("setup didn't work")](https://github.com/eylenburg/linoffice/issues) with these information:
 - The `windows_install.log` (in `~/.local/share/linoffice`)
@@ -214,7 +205,7 @@ If you can't get the setup to work, please [create a bug report ("setup didn't w
 
 ### Window management
 
-In my experience, window management can be wonky, particularly if you're using Wayland instead of X11. 
+In my experience, window management can be wonky, particularly if you're using Wayland instead of X11 or if you're using multiple monitors.
 
 <details><summary>Examples</summary>
     
@@ -229,14 +220,15 @@ I believe that these are FreeRDP issues. If it becomes too bad, you can try `./l
 
 ### Wrong keyboard layout
 
-Theoretically, this should be done automatically by the setup script but it might fall back to the US layout if it doesn't detect your Linux keyboard layout or can't match it to a Microsoft keyboard layout. There should be two ways to manually set the keyboard layout:
+Theoretically, this should be done automatically by the setup script but it might fall back to the US layout if it doesn't detect your Linux keyboard layout or can't match it to a Microsoft keyboard layout. There are two ways to manually set the keyboard layout:
 
 Option 1: 
-- In the LinOffice folder, open the `config/linoffice.conf` and find the row saying `RDP_KBD=""`. 
-- Check [this list of keyboard layouts](https://github.com/eylenburg/linoffice/blob/main/config/languages.csv) to find the numeric code for your keyboard layout in the first code. 
-- Edit the line in the config file like these examples: `RDP_KBD="/kbd:layout:0x0809"` for the UK keyboard or `RDP_KBD="/kbd:layout:0x0407"` for the German keyboard
+- In the GUI, you can choose the keyboard layout in Settings. If you're not using the GUI you can achieve the same thing manually:
+    - In the LinOffice folder, open the `config/linoffice.conf` and find the row saying `RDP_KBD=""`. 
+    - Check [this list of keyboard layouts](https://github.com/eylenburg/linoffice/blob/main/config/languages.csv) to find the numeric code for your keyboard layout in the first code. 
+    - Edit the line in the config file like these examples: `RDP_KBD="/kbd:layout:0x0809"` for the UK keyboard or `RDP_KBD="/kbd:layout:0x0407"` for the German keyboard
 
-Option 2:
+Option 2 (if the above doesn't work):
 - Access the Windows VM, either via RDP (`./linoffice.sh windows`) or VNC (`127.0.0.1:8006` in the browser, password is `MyWindowsPassword`)
 - Open the Windows Settings app and set your keyboard layout in there.
 - Open the Command Prompt (cmd.exe) and enter: `REG ADD "HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout" /v IgnoreRemoteKeyboardLayout /t REG_DWORD /d 1` (this tells Windows to use its own keyboard layout and not whatever the RDP client uses)
@@ -245,7 +237,7 @@ Option 2:
 
 There is a strange issue that Microsoft Office will not clean up the lock files in the Linux /home folder. If you open, say, "Book1.xlsx" then Excel will create a file called "~$Book1.xlsx" which is just a few bytes in size and serves the purpose of "locking" this file so other users can't edit it at the same time. Normally these files should be deleted when you close the file, but this doesn't happen for whatever reason. The /home folder is mounted by FreeRDP and appears in Windows as a network drive accessed via RDP Drive Redirection (RDPDR).
 
-LinOffice searches and deletes these lock files when the last Office process is closed. If this fails for any reason you can manually delete all lock files by running `./linoffice.sh cleanup --full`.
+LinOffice searches and deletes these lock files when the last Office process is closed. If this fails for any reason you can manually delete all lock files by running `./linoffice.sh cleanup --full` or by using the button in the "Troubleshooting" window.
 
 <details><summary>How to hide these lock files in KDE's Dolphin file manager</summary>
 
