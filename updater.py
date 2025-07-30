@@ -5,7 +5,6 @@ import shutil
 from pathlib import Path
 import re
 import sys
-from packaging import version
 import http.client
 import json
 import urllib.parse
@@ -13,7 +12,7 @@ import urllib.parse
 # Configuration
 REPO_OWNER = "eylenburg"
 REPO_NAME = "linoffice"
-CURRENT_VERSION = "1.0.99"
+CURRENT_VERSION = "1.99.0"
 GITHUB_API_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/releases"
 PRESERVE_FILES = {"config/compose.yaml", "config/linoffice.conf", "config/oem/registry/regional_settings.reg"}
 GITHUB_TOKEN = None  # Can replace with GitHub Personal Access Token if hitting API limits
@@ -46,10 +45,12 @@ def get_latest_release():
         print(f"Error fetching releases: {e}")
         return None
 
+def version_tuple(v):
+    return tuple(map(int, (v.split("."))))
 
 def compare_versions(current_version, latest_version):
     """Compare two version strings."""
-    return version.parse(latest_version) > version.parse(current_version)
+    return version_tuple(latest_version) > version_tuple(current_version)
 
 def download_and_update(asset_url, current_dir):
     """Download and extract the new release, preserving specified files."""
