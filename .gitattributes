@@ -3,4 +3,4 @@ config/oem/registry/regional_settings.reg   export-ignore
 config/compose.yaml                         export-ignore
 config/linoffice.conf                       export-ignore
 README.md                                   export-ignore
-screenshot.png                              export-ignore
+screenshot*.png                              export-ignore
