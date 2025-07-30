@@ -1,11 +1,14 @@
 #!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_NAME="$(basename "$0")"
+echo "Executing uninstall script in $SCRIPT_DIR"
 
 # Check if setup.sh exists and extract USER_APPLICATIONS_DIR and APPDATA_PATH
-if [[ ! -f "setup.sh" ]]; then
+if [[ ! -f "$SCRIPT_DIR/setup.sh" ]]; then
   echo "Warning: setup.sh not found in the current directory."
 else
-  eval $(grep -E '^\s*USER_APPLICATIONS_DIR=' setup.sh)
-  eval $(grep -E '^\s*APPDATA_PATH=' setup.sh)
+  eval $(grep -E '^\s*USER_APPLICATIONS_DIR=' $SCRIPT_DIR/setup.sh)
+  eval $(grep -E '^\s*APPDATA_PATH=' $SCRIPT_DIR/setup.sh)
 
   if [[ -z "$USER_APPLICATIONS_DIR" ]]; then
     echo "Warning: USER_APPLICATIONS_DIR not found in setup.sh."
@@ -18,7 +21,7 @@ fi
 
 # Check if APPDATA_PATH exists and delete if it does
 if [[ -d "$APPDATA_PATH" ]]; then
-  read -p "Do you want to delete the directory $APPDATA_PATH? (y/n): " confirm
+  read -p "Do you want to delete the app data in $APPDATA_PATH? (y/n): " confirm
   if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
     rm -r "$APPDATA_PATH"
     echo "Deleted directory: $APPDATA_PATH"
@@ -79,29 +82,27 @@ else
 fi
 
 # Find all files and folders in the same directory as uninstall.sh (excluding itself)
-CURRENT_DIR="$(dirname "$(realpath "$0")")"
-SCRIPT_NAME="$(basename "$0")"
 
-FILES_TO_DELETE=$(find "$CURRENT_DIR" -maxdepth 1 -not -name "$SCRIPT_NAME")
+FILES_TO_DELETE=$(find "$SCRIPT_DIR" -maxdepth 1 -not -name "$SCRIPT_NAME")
 if [[ -n "$FILES_TO_DELETE" ]]; then
   echo "The following files and folders will be deleted recursively:"
   echo "$FILES_TO_DELETE"
   read -p "Do you want to proceed with deletion? (y/n): " confirm
   if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
-    find "$CURRENT_DIR" -maxdepth 1 -not -name "$SCRIPT_NAME" -exec rm -rf {} \;
-    if [[ -f "setup.sh" ]]; then
-      rm -f "setup.sh"
+    find "$SCRIPT_DIR" -maxdepth 1 -not -name "$SCRIPT_NAME" -exec rm -rf {} \;
+    if [[ -f "$SCRIPT_DIR/setup.sh" ]]; then
+      rm -f "$SCRIPT_DIR/setup.sh"
     fi
     echo "Files and folders deleted."
+    # Delete the uninstall.sh script itself
+    echo "Deleting the uninstall script itself."
+    rm -f "$0"
+    echo "Uninstall script deleted."
   else
     echo "Deletion of files and folders aborted."
   fi
 else
-  echo "No files or folders to delete in $CURRENT_DIR."
+  echo "No files or folders to delete in $SCRIPT_DIR."
 fi
 
-# Delete the uninstall.sh script itself
-echo "Deleting the uninstall script itself."
-rm -f "$0"
-echo "Script deleted."
 exit 0
