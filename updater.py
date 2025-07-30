@@ -1,4 +1,3 @@
-import requests
 import zipfile
 import io
 import os
@@ -7,6 +6,9 @@ from pathlib import Path
 import re
 import sys
 from packaging import version
+import http.client
+import json
+import urllib.parse
 
 # Configuration
 REPO_OWNER = "eylenburg"
@@ -19,17 +21,31 @@ GITHUB_TOKEN = None  # Can replace with GitHub Personal Access Token if hitting 
 def get_latest_release():
     """Fetch the latest non-draft, non-prerelease release from GitHub."""
     try:
-        headers = {"Authorization": f"token {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
-        response = requests.get(GITHUB_API_URL, headers=headers, timeout=10)
-        response.raise_for_status()
-        releases = response.json()
+        conn = http.client.HTTPSConnection("api.github.com")
+        headers = {
+            "User-Agent": "LinofficeUpdateScript",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        if GITHUB_TOKEN:
+            headers["Authorization"] = f"token {GITHUB_TOKEN}"
+
+        path = f"/repos/{REPO_OWNER}/{REPO_NAME}/releases"
+        conn.request("GET", path, headers=headers)
+        response = conn.getresponse()
+        
+        if response.status != 200:
+            print(f"Error fetching releases: {response.status} {response.reason}")
+            return None
+        
+        releases = json.loads(response.read().decode())
         for release in releases:
             if not release.get("prerelease") and not release.get("draft"):
                 return release
         return None
-    except requests.RequestException as e:
+    except Exception as e:
         print(f"Error fetching releases: {e}")
         return None
+
 
 def compare_versions(current_version, latest_version):
     """Compare two version strings."""
@@ -38,10 +54,30 @@ def compare_versions(current_version, latest_version):
 def download_and_update(asset_url, current_dir):
     """Download and extract the new release, preserving specified files."""
     try:
-        headers = {"Authorization": f"token {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
-        response = requests.get(asset_url, stream=True, headers=headers, timeout=30)
-        response.raise_for_status()
-        zip_file = zipfile.ZipFile(io.BytesIO(response.content))
+        parsed_url = urllib.parse.urlparse(asset_url)
+        conn = http.client.HTTPSConnection(parsed_url.netloc)
+        headers = {
+            "User-Agent": "PythonUpdateScript"
+        }
+        if GITHUB_TOKEN:
+            headers["Authorization"] = f"token {GITHUB_TOKEN}"
+        conn.request("GET", parsed_url.path, headers=headers)
+        response = conn.getresponse()
+
+        # Handle redirects (e.g., GitHub -> AWS)
+        if response.status in (301, 302, 303, 307, 308):
+            redirect_url = response.getheader("Location")
+            if not redirect_url:
+                print("Redirect without Location header")
+                return False
+            print(f"Redirected to: {redirect_url}")
+            return download_and_update(redirect_url, current_dir)
+
+        if response.status != 200:
+            print(f"Error downloading asset: {response.status} {response.reason}")
+            return False
+
+        zip_file = zipfile.ZipFile(io.BytesIO(response.read()))
 
         # Get the top-level folder name in the zip (e.g., 'linoffice-1.0.7/')
         top_level_folder = next((name for name in zip_file.namelist() if '/' in name), None)
