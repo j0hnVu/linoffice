@@ -86,12 +86,15 @@ To download an install LinOffice and all the necessary dependencies, run this in
 curl -sSL https://github.com/eylenburg/linoffice/raw/refs/heads/main/quickstart.sh -o quickstart.sh && chmod +x quickstart.sh && ./quickstart.sh
 ```
 
+This should automatically install all the required dependencies for most distros and _should_ work with most distros.
+
 >[!NOTE]
->This should automatically install all the required dependencies for most distros and _should_ work with most distros. However, if it fails or if you are using an immutable distro (e.g. Fedora Atomic), NixOS, Slackware, Gentoo, or Alpine you will need to do the manual installation (see below)
+>The script will install Podman, Podman-Compose, FreeRDP3, Python3 and PySide6 on your computer. If they are not available in your repo, they will be installed via Flatpak or Pip where possible.
+
+>[!WARNING]
+>If the quickstart script fails or if you are using an immutable distro (e.g. Fedora Atomic), NixOS, Slackware, Gentoo, or Alpine you will need to do the manual installation (see below)
 
 ## Manual install
-
-
 
 ### Dependencies
 
