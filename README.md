@@ -70,15 +70,28 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 
 # Installation
 
-### Requirements
-
 All Linux distributions are supported.
 
-Hardware requirements:
+**Hardware requirements:**
 - Sufficient resources (the Windows VM is allowed to take up to 4 GB RAM, 64 GB storage and 4 CPU cores if needed). The script will check that you have at least 8 GB RAM and 64 GB free storage before proceeding.
 - Virtualization support (using kvm)
 - x86_64 CPU (ARM is currently not supported, although it would be possible)
 - Fast Internet connection as you will need to download several GB from Micrsoft
+
+## Quickinstall
+
+To download an install LinOffice and all the necessary dependencies, run this in a terminal:
+
+```
+curl -sSL https://github.com/eylenburg/linoffice/raw/refs/heads/main/quickstart.sh -o quickstart.sh && chmod +x quickstart.sh && ./quickstart.sh
+```
+
+>[!NOTE]
+>This should automatically install all the required dependencies for most distros and _should_ work with most distros. However, if it fails or if you are using an immutable distro (e.g. Fedora Atomic), NixOS, Slackware, Gentoo, or Alpine you will need to do the manual installation (see below)
+
+## Manual install
+
+
 
 ### Dependencies
 
@@ -126,13 +139,13 @@ Unfortunately it is not allowed to redistribute Microsoft software, otherwise I 
 
 </details>
 
-### Updating
+## Updating
 
 - LinOffice: There's a built-in updater in the GUI. Otherwise, you can manually download the newest version and replace the old files with it. Don't delete all of your old files (as there are some files that will be created during the initial setup), just overwrite any existing ones.
     - If you already have a working Windows VM from LinOffice v1.0.7 and below, and you want to update, all the files in `linoffice/config/oem` will need to be manually copied again into `C:\OEM` in the Windows VM, overwriting any existing ones. In the RDP session (`./linoffice.sh windows`) you can access your Linux `/home` folder at `\\tsclient\home`.
 - Windows & Office: Should auto-update but there's also an update script in the GUI (or you can run `./linoffice.sh update` from the terminal.)
 
-### Uninstall
+## Uninstall
 
 You can run the `uninstall.sh` to remove everything or click on the Uninstall button in the "Troubleshooting" menu.
 
