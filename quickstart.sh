@@ -148,7 +148,7 @@ dependencies_main() {
   if freerdp_version_ok; then
     echo "FreeRDP is already version >= 3"
   else
-    try_install_any freerdp3 freerdp freerdp3-x11 || true
+    try_install_any freerdp3 freerdp3-x11 freerdp || true
     if ! freerdp_version_ok; then
       echo "Falling back to Flatpak for FreeRDP"
       install_freerdp_flatpak
