@@ -36,10 +36,12 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 ### Planned features
 
 - [ ] Logo to use for the GUI
-- [ ] APPDATA folder should not be hardcoded (in `setup.sh`, `linoffice.sh`, `mainwindow.py`, `installer.py`, `linoffice.py`, `TimeSync.ps1`, `FirstRunRDP.ps1`, and `RegistryOverride.ps1`) or at least only hardcoded in one of them and then read by the others (like `uninstall.sh` is doing).
 - [ ] Deliver as Flatpak or AppImage, which would have these benefits:
     - Bundles dependencies such as FreeRDP and Podman-Compose; only Podman would need to be installed on the system already
-    - Installation and uninstallation more straight-forward for Linux beginners
+    - Installation and uninstallation more straight-forward for Linux beginners 
+- [ ] APPDATA folder should not be hardcoded (in `setup.sh`, `linoffice.sh`, `mainwindow.py`, `installer.py`, `linoffice.py`, `TimeSync.ps1`, `FirstRunRDP.ps1`, and `RegistryOverride.ps1`) or at least only hardcoded in one of them and then read by the others (like `uninstall.sh` is doing).
+- [ ] Flatpak would not allow creatingfiles in the `config` folder inside the app's folder (`compose.yaml`, `linoffice.conf`, `oem/registry/regional-settings.reg`), so it might be better to to move this whole folder out of the app directory and change the file references (perhaps copy to the APPDATA folder)
+
 
 ### Nice to have but lower priority
 
