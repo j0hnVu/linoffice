@@ -19,7 +19,7 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 - [x] Run Publisher or Access, if manually installed by user
 - [x] Quickly access useful tools such as Powershell, Command Prompt, Windows Explorer, Registry Editor, Office Language Settings
 - [x] Run a full Windows session via RDP or VNC
-- [x] Automatic suspend of the Windows container when inactive, resume when starting an Office app
+- [x] Automatic suspension of the Windows container when inactive, resume when starting an Office app
 - [x] Automatic deletion of Office lock files (like `~$file.docx`)
 - [x] Force time sync in Windows after Linux host wakes up from sleep, to avoid time drift (time zone is always set to UTC for simplicity)
 - [x] Automatic detection of language, date format, thousand and decimal separator, currency symbol, keyboard layout etc
@@ -80,7 +80,7 @@ All Linux distributions are supported.
 
 ## Quickinstall
 
-To download an install LinOffice and all the necessary dependencies, run this in a terminal:
+To download and install LinOffice and all the necessary dependencies, run this in a terminal:
 
 ```
 curl -sSL https://github.com/eylenburg/linoffice/raw/refs/heads/main/quickstart.sh -o quickstart.sh && chmod +x quickstart.sh && ./quickstart.sh
@@ -92,7 +92,7 @@ This should automatically install all the required dependencies for most distros
 >The script will install Podman, Podman-Compose, FreeRDP3, Python3 and PySide6 on your computer. If they are not available in your repo, they will be installed via Flatpak or Pip where possible.
 
 >[!WARNING]
->If the quickstart script fails or if you are using an immutable distro (e.g. Fedora Atomic), NixOS, Slackware, Gentoo, or Alpine you will need to do the manual installation (see below)
+>The quickstart script will fail if you are using an immutable distro (e.g. Fedora Atomic), NixOS, Slackware, Gentoo, or Alpine. In this case you will need to do install the dependencies yourself (see below).
 
 ## Manual install
 
@@ -121,7 +121,7 @@ FreeRDP can also be installed as a [Flatpak](https://flathub.org/apps/com.freerd
 
 </details>
 
-### Install
+### Run the installer
 
 First, install the dependencies (see above).
 
