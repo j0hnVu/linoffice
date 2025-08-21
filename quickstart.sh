@@ -122,7 +122,7 @@ install_freerdp_flatpak() {
   fi
 
   if ! flatpak remote-list | grep -q flathub; then
-    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+    flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
   fi
 
   flatpak install -y --user flathub com.freerdp.FreeRDP
