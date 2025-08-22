@@ -93,7 +93,7 @@ while [[ $# -gt 0 ]]; do
         --healthcheck)
             HEALTHCHECK=true
             shift
-            ;;            
+            ;;
         --help)
             print_usage
             ;;
@@ -196,7 +196,7 @@ function check_requirements() {
         echo "Virtualization is supported."
     else
         exit_with_error "CPU virtualization not supported or not enabled.
-        
+
         HOW TO FIX:
         1. Reboot your computer and enter BIOS/UEFI settings (usually F2, F12, Del, or Esc during boot)
         2. Look for virtualization settings:
@@ -209,7 +209,7 @@ function check_requirements() {
     # Additional check for KVM support
     if [ ! -e /dev/kvm ]; then
         exit_with_error "KVM device not available. Virtualization may not be enabled in BIOS.
-        
+
     HOW TO FIX:
     1. Ensure virtualization is enabled in BIOS (see previous instructions)
     2. Install KVM kernel modules: sudo modprobe kvm
@@ -225,17 +225,17 @@ function check_requirements() {
 
     if ! command -v podman &> /dev/null; then
         exit_with_error "podman is not installed.
-        
+
     HOW TO FIX:
     Ubuntu/Debian: sudo apt update && sudo apt install podman
     Fedora/RHEL: sudo dnf install podman
-    OpenSUSE: sudo zypper install podman    
+    OpenSUSE: sudo zypper install podman
     Arch Linux: sudo pacman -S podman
     openSUSE: sudo zypper install podman
 
     Or visit: https://podman.io/getting-started/installation"
     fi
-    
+
     if ! podman info >/dev/null 2>&1; then
         exit_with_error "Podman is not configured correctly or you lack sufficient permissions. Run 'podman info' to diagnose the issue."
     fi
@@ -248,15 +248,15 @@ function check_requirements() {
 
     if ! command -v podman-compose &> /dev/null; then
         exit_with_error "podman-compose is not installed.
-        
+
     HOW TO FIX:
     Option 1 - Using pip: pip3 install podman-compose
     Option 2 - Using package manager:
     Ubuntu/Debian: sudo apt install podman-compose
     Fedora: sudo dnf install podman-compose
-    OpenSUSE: sudo zypper install podman-compose    
+    OpenSUSE: sudo zypper install podman-compose
     Arch Linux: sudo pacman -S podman-compose
-    
+
     Or visit: https://github.com/containers/podman-compose"
     fi
 
@@ -264,8 +264,8 @@ function check_requirements() {
     if python3 -c "import dotenv" >/dev/null 2>&1; then
         print_success "python-dotenv is installed."
     else
-        exit_with_error "python-dotenv is not installed. 
-        
+        exit_with_error "python-dotenv is not installed.
+
     HOW TO FIX:
     Using pip: pip install python-dotenv
     If you don't have pip, you can install it with your package manager.
@@ -294,7 +294,7 @@ function check_requirements() {
             # Check if Flatpak has access to /home
             if ! flatpak info --show-permissions com.freerdp.FreeRDP | grep -q "filesystems=.*home"; then
                 exit_with_error "Flatpak FreeRDP does not have access to /home directory.
-                
+
                 HOW TO FIX:
                 1. Close any running FreeRDP instances
                 2. Run this command to grant access:
@@ -307,7 +307,7 @@ function check_requirements() {
         fi
     else
         exit_with_error "FreeRDP is not installed
-        
+
     HOW TO FIX:
     Option 1 - Using Flatpak and Flathub: flatpak install com.freerdp.FreeRDP
     Option 2 - Using package manager:
@@ -327,7 +327,7 @@ function check_requirements() {
     print_info "Checking iptables kernel modules"
     if ! lsmod | grep -q ip_tables || ! lsmod | grep -q iptable_nat; then
         print_info "WARNING: iptables kernel modules not loaded. Sharing the /home folder with the Windows VM will not work unless connected via RDP. HOW TO FIX:
-        
+
     Run the following command:
     echo -e 'ip_tables\niptable_nat' | sudo tee /etc/modules-load.d/iptables.conf
     Then reboot your system."
@@ -345,7 +345,7 @@ function check_requirements() {
     # Check OEM directory permissions
     if [ ! -r "$OEM_DIR" ] || [ ! -x "$OEM_DIR" ] || ! find "$OEM_DIR" -type f -readable | head -1 >/dev/null 2>&1; then
         exit_with_error "Insufficient permissions to access OEM directory: $OEM_DIR
-        
+
         HOW TO FIX:
         1. Check directory permissions: ls -ld $OEM_DIR
         2. Fix permissions: chmod -R u+rwX $OEM_DIR
@@ -363,11 +363,11 @@ function check_requirements() {
         exit_with_error "LinOffice configuration file not found: $LINOFFICE_CONF.default
     Please ensure the file exists in the config directory."
     fi
-    
+
     if [ ! -f "$LINOFFICE" ]; then
         exit_with_error "File not found: $LINOFFICE"
     fi
-    
+
     print_success "Files found."
 
     # Make scripts executable
@@ -405,18 +405,18 @@ function check_requirements() {
         3. Verify mappings in /etc/subuid and /etc/subgid"
     fi
     print_success "subUID/subGID mappings verified."
-    
+
     # Check Podman storage configuration and whether overlay storage driver is used, as some users had problems here
     print_info "Checking Podman storage configuration"
     if ! podman info --format '{{.Store.GraphDriverName}}' 2>/dev/null | grep -q "overlay"; then
         exit_with_error "Podman is not using overlay storage driver or there's a configuration issue.
-        
+
         HOW TO FIX:
         1. Check Podman storage configuration: podman info
         2. Try resetting Podman: podman system reset (WARNING: This removes all containers and images)
         3. Check if /run/containers directory exists and is writable"
     fi
-    
+
     # Determine if running rootless or rootful
     if podman info --format '{{.Host.Security.Rootless}}' | grep -q true; then
         IS_ROOTLESS=true
@@ -428,17 +428,17 @@ function check_requirements() {
         NETWORK_DIR="/run/containers/storage/networks"
     fi
     print_info "Podman running in $( $IS_ROOTLESS && echo 'rootless' || echo 'rootful' ) mode"
-    
+
     # Check if storage directory is accessible
     if [ ! -d "$STORAGE_DIR" ] || [ ! -w "$STORAGE_DIR" ]; then
         exit_with_error "Podman storage directory inaccessible: $STORAGE_DIR
-        
+
         1. Check if directory exists: ls -ld \"$STORAGE_DIR\"
         2. If it exists, fix permissions: $( $IS_ROOTLESS && echo "chmod -R u+rwX \"$STORAGE_DIR\"" || echo "sudo chmod -R u+rwX \"$STORAGE_DIR\"" )
         3. If it does not exist, initialize Podman: podman info"
     fi
     print_success "Podman storage directory verified: $STORAGE_DIR"
-    
+
     # Check which networking backend is in use
     print_info "Checking Podman networking is working"
     NETWORK_BACKEND=$(podman info --format '{{.Host.NetworkBackend}}' 2>/dev/null)
@@ -452,7 +452,7 @@ function check_requirements() {
     print_info "Testing network creation with backend: $NETWORK_BACKEND"
     if ! podman network create "$TEST_NET_NAME" >/dev/null 2>&1; then
         exit_with_error "Failed to create test network '$TEST_NET_NAME'.
-        
+
         HOW TO FIX:
         1. Check Podman logs: journalctl -u podman
         2. $( $IS_ROOTLESS && echo 'Ensure user has sufficient permissions.' || echo 'Run as root or check sudo permissions.' )
@@ -471,7 +471,7 @@ function check_requirements() {
         exit_with_error "Network directory not writable: $NETWORK_DIR"
     fi
     print_success "Netavark configuration verified."
-    
+
     # Clean up test network
     if podman network exists "$TEST_NET_NAME" >/dev/null 2>&1; then
         podman network rm "$TEST_NET_NAME" >/dev/null 2>&1 || print_info "Note: Failed to remove test network '$TEST_NET_NAME', you may remove it manually."
@@ -482,7 +482,7 @@ function check_requirements() {
     print_info "Testing basic container functionality..."
     if ! timeout 60 podman run --rm alpine:latest echo "test" >/dev/null 2>&1; then
         exit_with_error "Basic container test failed. This could indicate storage driver issues.
-        
+
         HOW TO FIX:
         1. Check Podman logs: journalctl --user -u podman
         2. Try: podman system reset (WARNING: removes all containers/images)
@@ -596,7 +596,7 @@ function create_container() {
     log_pid=$!
 
     print_info "Monitoring container setup progress..."
-    
+
     # Monitor the logfile for progress
     while true; do
         local current_time=$(date +%s)
@@ -604,13 +604,13 @@ function create_container() {
             result=1
             exit_with_error "Container setup timed out after $((max_timeout/60)) minutes."
         fi
-        
+
         # Read the logfile if it exists
         if [ -f "$LOGFILE" ]; then
             # Get file size to detect new activity
             local current_size=$(stat -c%s "$LOGFILE" 2>/dev/null || echo "0")
             local previous_size=${previous_size:-0}
-            
+
             if [ "$current_size" -gt "$previous_size" ]; then
                 last_activity_time=$current_time
                 previous_size=$current_size
@@ -718,7 +718,7 @@ function create_container() {
 
 function verify_container_health() {
     print_info "Verifying container health..."
-    
+
     # Check if container is running
     if ! podman ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
         print_info "Container is not running. Attempting to start it..."
@@ -732,7 +732,7 @@ function verify_container_health() {
         print_info "Waiting for container to boot..."
         sleep 20
     fi
-    
+
     # Check container logs for any obvious errors
     local container_logs=$(podman logs --tail 50 "$CONTAINER_NAME" 2>/dev/null || echo "")
     if echo "$container_logs" | grep -iq "error\|failed\|fatal"; then
@@ -742,7 +742,7 @@ function verify_container_health() {
         2. podman-compose --file config/compose.yaml up -d"
         return 1
     fi
-    
+
     return 0
 }
 
@@ -752,10 +752,10 @@ function check_available() {
     fi
     print_step "7" "Checking if everything is set up correctly"
     print_info "Checking if RDP server is available"
-    local max_attempts=30 
+    local max_attempts=30
     local attempt=0
     local success=0
-    
+
     if [ ! -e "$SUCCESS_FILE" ]; then
         while [ $attempt -lt $max_attempts ]; do
             attempt=$((attempt + 1))
@@ -773,7 +773,7 @@ function check_available() {
 
             # Try to check if RDP is ready
             print_info "Testing RDP connection (attempt $attempt of $max_attempts)..."
-            
+
             # Use timeout to prevent hanging
             # For now, credentials and IP/port are hardcoded for simplicity, make sure they match what is in the compose.yaml and linoffice.conf
             echo "DEBUG: Using FreeRDP command: $FREERDP_COMMAND" >> "$LOGFILE"
@@ -794,7 +794,7 @@ function check_available() {
             echo "$freerdp_output" >> "$LOGFILE"
             echo "DEBUG: FreeRDP exit code was: $freerdp_exit" >> "$LOGFILE"
             local freerdp_exit=$?
-            
+
             # Log the output regardless of success/failure
             echo "$freerdp_output" >> "$LOGFILE"
 
@@ -842,7 +842,7 @@ function check_success() {
     local connection_timeout=60 # 1 minute should be enough to run the FirstRDPRun.ps1 script
     local check_interval=10  # Try again after 10 seconds
     local installation_timeout=1800 # 30 minutes timeout for Office download and installation
-    
+
     # Function to cleanup FreeRDP process
     cleanup_freerdp() {
         if [ -n "$freerdp_pid" ] && kill -0 "$freerdp_pid" 2>/dev/null; then
@@ -860,10 +860,10 @@ function check_success() {
     while [ $retry_count -lt $max_retries ]; do
         retry_count=$((retry_count + 1))
         print_info "Starting FreeRDP connection to mount home directory (Attempt $retry_count of $max_retries)..."
-        
+
         # Clear any existing success file to ensure fresh check
         rm -f "$SUCCESS_FILE"
-        
+
         # Start FreeRDP in the background with home-drive enabled
         if [[ "$FREERDP_COMMAND" == flatpak* ]]; then
             timeout $connection_timeout bash -c "$FREERDP_COMMAND /cert:ignore +home-drive /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\FirstRDPRun.ps1'" >>"$LOGFILE" 2>&1 &
@@ -878,9 +878,9 @@ function check_success() {
                 /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\FirstRDPRun.ps1' \
                 >>"$LOGFILE" 2>&1 &
         fi
-        
+
         freerdp_pid=$!
-        
+
         # Wait briefly and check if FreeRDP started successfully
         sleep 5
         if kill -0 "$freerdp_pid" 2>/dev/null; then
@@ -890,7 +890,7 @@ function check_success() {
             wait $freerdp_pid 2>/dev/null
             local exit_code=$?
             print_error "FreeRDP failed to start or exited immediately (exit code: $exit_code)"
-            
+
             if [ $retry_count -lt $max_retries ]; then
                 print_info "Retrying in 10 seconds..."
                 sleep 10
@@ -904,9 +904,9 @@ function check_success() {
     # Reset elapsed time for installation monitoring
     elapsed_time=0
     local last_check_time=$(date +%s)
-    
+
     print_info "Waiting for Office installation to complete (timeout: $((installation_timeout/60)) minutes)..."
-    
+
     # Monitor for success file creation
     while [ $elapsed_time -lt $installation_timeout ]; do
         # Check if success file exists
@@ -920,16 +920,16 @@ function check_success() {
         if ! kill -0 "$freerdp_pid" 2>/dev/null; then
             wait $freerdp_pid 2>/dev/null
             local exit_code=$?
-            
+
             # Check if success file was created before process ended
             if [ -f "$SUCCESS_FILE" ]; then
                 print_success "Success file detected - Office installation is complete!"
                 return 0
             fi
-            
+
             print_error "FreeRDP connection terminated (exit code: $exit_code)"
             print_info "Checking if success file was created..."
-            
+
             sleep 2
             if [ -f "$SUCCESS_FILE" ]; then
                 print_success "Success file found - Office installation completed successfully!"
@@ -948,21 +948,21 @@ function check_success() {
     # Timeout reached
     print_error "Timeout waiting for Office installation to complete after $((installation_timeout / 60)) minutes"
     print_info "Check log file at $LOGFILE for details"
-    
+
     # Final check for success file
     if [ -f "$SUCCESS_FILE" ]; then
         print_success "Success file found during cleanup - Office installation completed!"
         cleanup_freerdp
         return 0
     fi
-    
+
     cleanup_freerdp
     return 1
 }
 
 function desktop_files() {
     print_step "8" "Installing .desktop files (app launchers)"
-    
+
     # Check if required directories exist
     if [ ! -d "$DESKTOP_DIR" ]; then
         exit_with_error "Error: Desktop directory not found: $DESKTOP_DIR"
@@ -982,7 +982,7 @@ function desktop_files() {
     print_info "Processing .desktop files..."
     echo "Number of apps found: ${#apps[@]}"
     echo "Apps are: ${apps[*]}"
-    
+
     for app in "${apps[@]}"; do
         echo "Starting to process app: $app"
         local desktop_file="$DESKTOP_DIR/$app.desktop"

@@ -56,8 +56,8 @@ CLEANUP_TIME_WINDOW=86400  # Default: 24 hours. Do not delete Office lock files 
 # OTHER
 FREERDP_PID=-1
 NEEDED_BOOT=false
-IS_OFFICE_WXP_APP=false  
-SCRIPT_START_TIME=0      
+IS_OFFICE_WXP_APP=false
+SCRIPT_START_TIME=0
 
 # Virtual environment support
 USE_VENV=0
@@ -137,12 +137,12 @@ waAcquireLock() {
     local lock_file="$1"
     local timeout="${2:-5}"
     local elapsed=0
-    
+
     while [ $elapsed -lt $timeout ]; do
         if (set -C; echo $$ > "$lock_file") 2>/dev/null; then
             return 0
         fi
-        
+
         # Check if lock holder is still alive
         if [ -f "$lock_file" ]; then
             local lock_pid=$(cat "$lock_file" 2>/dev/null)
@@ -152,11 +152,11 @@ waAcquireLock() {
                 continue
             fi
         fi
-        
+
         sleep 1
         elapsed=$((elapsed + 1))
     done
-    
+
     return 1
 }
 
@@ -165,7 +165,7 @@ waAcquireLock() {
 waReleaseLock() {
     local lock_file="$1"
     local lock_pid=$(cat "$lock_file" 2>/dev/null)
-    
+
     # Only remove if we own the lock
     if [ "$lock_pid" = "$$" ]; then
         rm -f "$lock_file" 2>/dev/null
@@ -176,7 +176,7 @@ waReleaseLock() {
 # Role: Register this script instance, used for Office lock file cleanup
 waRegisterInstance() {
     mkdir -p "$INSTANCES_DIR"
-    
+
     # Create instance file with metadata
     cat > "$INSTANCE_FILE" << EOF
 PID=$$
@@ -185,7 +185,7 @@ SCRIPT_ARGS=$*
 OFFICE_APP=$IS_OFFICE_WXP_APP
 FREERDP_PID=$FREERDP_PID
 EOF
-    
+
     dprint "REGISTERED INSTANCE: $INSTANCE_ID"
 }
 
@@ -200,13 +200,13 @@ waUnregisterInstance() {
 # Role: Check if master cleanup should run, used for Office lock file cleanup
 waCheckMasterCleanup() {
     local force_cleanup="$1"
-    
+
     if waAcquireLock "$MASTER_LOCK" 10; then
         dprint "ACQUIRED MASTER CLEANUP LOCK"
-        
+
         local active_instances=0
         local office_instances=0
-        
+
         if [ -d "$INSTANCES_DIR" ]; then
             for instance_file in "$INSTANCES_DIR"/*; do
                 [ -f "$instance_file" ] || continue
@@ -221,9 +221,9 @@ waCheckMasterCleanup() {
                 fi
             done
         fi
-        
+
         dprint "ACTIVE INSTANCES: $active_instances, OFFICE INSTANCES: $office_instances"
-        
+
         # Run master cleanup if no active instances or forced (but only office cleanup if forced)
         if [ "$active_instances" -eq 0 ] || [ "$force_cleanup" = "true" ]; then
             if [ "$force_cleanup" = "true" ]; then
@@ -233,7 +233,7 @@ waCheckMasterCleanup() {
                 waMasterCleanup "$office_instances" "false"
             fi
         fi
-        
+
         waReleaseLock "$MASTER_LOCK"
     else
         dprint "COULD NOT ACQUIRE MASTER CLEANUP LOCK - ANOTHER INSTANCE CLEANING UP"
@@ -245,11 +245,11 @@ waCheckMasterCleanup() {
 waMasterCleanup() {
     local office_instances="$1"
     local force_cleanup="$2"
-    
+
     dprint "RUNNING MASTER CLEANUP (Force: $force_cleanup)"
-    
+
     rm -f "${APPDATA_PATH}"/FreeRDP_Process_*.cproc 2>/dev/null
-    
+
     if [ "$office_instances" -gt 0 ] || [ "$force_cleanup" = "true" ]; then
         dprint "RUNNING OFFICE CLEANUP"
         if [ "$force_cleanup" = "true" ]; then
@@ -258,9 +258,9 @@ waMasterCleanup() {
             waOfficeCleanup
         fi
     fi
-    
+
     rmdir "$INSTANCES_DIR" 2>/dev/null
-    
+
     dprint "MASTER CLEANUP COMPLETED"
 }
 
@@ -278,9 +278,9 @@ waOfficeCleanup() {
     else
         cleanup_start_time=$(stat -t -c %Y "$LAST_CLEANUP_FILE" 2>/dev/null || echo $SCRIPT_START_TIME)
     fi
-    
+
     dprint "OFFICE CLEANUP STARTED (Using cleanup_start_time: $cleanup_start_time)"
-    
+
     local trash_cmd=""
     if command -v gio &> /dev/null; then
         trash_cmd="gio trash"
@@ -290,7 +290,7 @@ waOfficeCleanup() {
         trash_cmd="rm"
         dprint "WARNING: No trash command found, files will be deleted permanently"
     fi
-    
+
     local files_cleaned=0
     local files_skipped=0
     local find_paths=(~)
@@ -312,7 +312,7 @@ waOfficeCleanup() {
             fi
         fi
     done < <(find "${find_paths[@]}" -type f \( -name '~$*.xlsx' -o -name '~$*.docx' -o -name '~$*.pptx' -o -name '~$*.xlsm' -o -name '~$*.docm' -o -name '~$*.pptm' \) -not -path '*/.*' -print0 2>/dev/null)
-    
+
     dprint "OFFICE CLEANUP COMPLETED - $files_cleaned files cleaned, $files_skipped files skipped"
     echo -e "Office cleanup completed: $files_cleaned files cleaned, $files_skipped files skipped"
 
@@ -327,9 +327,9 @@ waWaitForAllProcesses() {
     local max_wait_time=30
     local wait_elapsed=0
     local check_interval=2
-    
+
     dprint "WAITING FOR ALL FREERDP PROCESSES TO CLOSE"
-    
+
     # First, try to find and kill any remaining FreeRDP processes
     for proc_file in "${APPDATA_PATH}"/FreeRDP_Process_*.cproc; do
         [ -f "$proc_file" ] || continue
@@ -345,7 +345,7 @@ waWaitForAllProcesses() {
         fi
         rm -f "$proc_file" 2>/dev/null
     done 2>/dev/null
-    
+
     # Then wait for any remaining processes to finish
     while ls "${APPDATA_PATH}"/FreeRDP_Process_*.cproc &>/dev/null; do
         if [ $wait_elapsed -ge $max_wait_time ]; then
@@ -354,14 +354,14 @@ waWaitForAllProcesses() {
             rm -f "${APPDATA_PATH}"/FreeRDP_Process_*.cproc 2>/dev/null
             break
         fi
-        
+
         sleep $check_interval
         wait_elapsed=$((wait_elapsed + check_interval))
         dprint "Still waiting for processes to close... ($wait_elapsed seconds elapsed)"
     done
-    
+
     dprint "PROCESS CLEANUP COMPLETED"
-    
+
     # Run cleanup after all processes are handled
     waCheckMasterCleanup "true"
 }
@@ -370,10 +370,10 @@ waWaitForAllProcesses() {
 # Role: Cleanup this script instance
 waCleanupInstance() {
     dprint "CLEANUP INSTANCE: $INSTANCE_ID"
-    
+
     # Unregister this instance
     waUnregisterInstance
-    
+
     # Check if master cleanup should run
     waCheckMasterCleanup "false"
 }
@@ -401,7 +401,7 @@ waLastRun() {
 # Role: Reset the system by killing all FreeRDP processes, running cleanup, and rebooting the Windows VM
 waResetSystem() {
     dprint "STARTING SYSTEM RESET"
-    
+
     # 1. Kill all FreeRDP processes
     dprint "KILLING ALL FREERDP PROCESSES"
     for proc_file in "${APPDATA_PATH}"/FreeRDP_Process_*.cproc; do
@@ -418,21 +418,21 @@ waResetSystem() {
         fi
         rm -f "$proc_file" 2>/dev/null
     done
-    
+
     # 2. Run cleanup
     dprint "RUNNING FULL CLEANUP"
     waCheckMasterCleanup "true"
-    
+
     # 3. Reboot Windows VM
     dprint "REBOOTING WINDOWS VM"
     echo -e "Rebooting Windows VM..."
     "$COMPOSE_COMMAND" --file "$COMPOSE_PATH" restart &>/dev/null
-    
+
     # Wait for container to restart
     local max_wait_time=120
     local wait_elapsed=0
     local check_interval=5
-    
+
     dprint "WAITING FOR WINDOWS VM TO RESTART..."
     while (( wait_elapsed < max_wait_time )); do
         if [[ $("$WAFLAVOR" inspect --format='{{.State.Status}}' "$CONTAINER_NAME") == "running" ]]; then
@@ -448,13 +448,13 @@ waResetSystem() {
             echo -e "Still waiting for Windows VM to restart... ($((wait_elapsed/60)) minutes elapsed)"
         fi
     done
-    
+
     if (( wait_elapsed >= max_wait_time )); then
         dprint "TIMEOUT WAITING FOR WINDOWS VM TO RESTART"
         echo -e "Timeout waiting for Windows VM to restart. Please check the container status."
         waThrowExit $EC_FAIL_START
     fi
-    
+
     dprint "SYSTEM RESET COMPLETED"
 }
 
@@ -641,7 +641,7 @@ function waCheckContainerRunning() {
         echo -e "Waiting for Windows to be ready..."
 
         TIME_ELAPSED=0
-        
+
         while (( TIME_ELAPSED < MAX_WAIT_TIME )); do
             # Check if container is running
             if [[ $("$WAFLAVOR" inspect --format='{{.State.Status}}' "$CONTAINER_NAME") == "running" ]]; then
@@ -657,16 +657,16 @@ function waCheckContainerRunning() {
                     break
                 fi
             fi
-            
+
             sleep 5
             TIME_ELAPSED=$((TIME_ELAPSED + 5))
-            
+
             # Show progress every 30 seconds
             if (( TIME_ELAPSED % 30 == 0 )); then
                 echo -e "Still waiting for Windows to be ready... ($TIME_ELAPSED seconds elapsed)"
             fi
         done
-        
+
         # If we timed out waiting for the container
         if (( TIME_ELAPSED >= MAX_WAIT_TIME )); then
             dprint "TIMEOUT WAITING FOR CONTAINER TO BE READY"
@@ -676,7 +676,7 @@ function waCheckContainerRunning() {
     fi
 }
 
-# Name: 'waTimeSync'  
+# Name: 'waTimeSync'
 # Role: Detect if system went to sleep by comparing uptime progression, then sync time in Windows VM
 function waTimeSync() {
     local CURRENT_TIME=$(date +%s)
@@ -685,32 +685,32 @@ function waTimeSync() {
     local STORED_UPTIME=0
     local EXPECTED_UPTIME=0
     local UPTIME_DIFF=0
-    
+
     # Read stored values if file exists
     if [ -f "$SLEEP_DETECT_PATH" ]; then
         STORED_TIME=$(head -n1 "$SLEEP_DETECT_PATH" 2>/dev/null || echo 0)
         STORED_UPTIME=$(tail -n1 "$SLEEP_DETECT_PATH" 2>/dev/null || echo 0)
     fi
-    
+
     if [ "$STORED_TIME" -gt 0 ] && [ "$STORED_UPTIME" -gt 0 ]; then
         # Calculate what uptime should be now
         EXPECTED_UPTIME=$((STORED_UPTIME + CURRENT_TIME - STORED_TIME))
         UPTIME_DIFF=$((EXPECTED_UPTIME - CURRENT_UPTIME))
-        
+
         dprint "UPTIME_DIFF: ${UPTIME_DIFF} seconds"
-        
+
         # If uptime is significantly less than expected, system likely slept
         if [[ "$UPTIME_DIFF" -gt 30 && ! -f "$SLEEP_MARKER" ]]; then
             dprint "DETECTED SLEEP/WAKE CYCLE (uptime gap: ${UPTIME_DIFF}s). CREATING SLEEP MARKER TO SYNC WINDOWS TIME."
             echo -e "Detected system sleep/wake cycle. Creating sleep marker to sync Windows time..."
-            
+
             # Create sleep marker which will be monitored by Windows VM to trigger time sync
             touch "$SLEEP_MARKER"
-            
+
             dprint "CREATED SLEEP MARKER"
         fi
     fi
-    
+
     # Store current values
     {
         echo "$CURRENT_TIME"
@@ -805,7 +805,7 @@ function waRunCommand() {
             /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
 
         # Capture the process ID.
-        FREERDP_PID=$!   
+        FREERDP_PID=$!
 
     elif [ "$1" = "update" ]; then
         # Run the script
@@ -822,9 +822,9 @@ function waRunCommand() {
             $RDP_FLAGS \
             /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\UpdateWindows.ps1' \
             /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
-    
+
         # Capture the process ID.
-        FREERDP_PID=$!  
+        FREERDP_PID=$!
 
     # This function is not meant to be used by the user. It executes a script to update the registry for international settings if the settings have been changed in the LinOffice GUI
     elif [ "$1" = "registry_override" ]; then
@@ -842,9 +842,9 @@ function waRunCommand() {
             $RDP_FLAGS \
             /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\RegistryOverride.ps1' \
             /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
-    
+
         # Capture the process ID.
-        FREERDP_PID=$!  
+        FREERDP_PID=$!
 
     # This function is not meant to be used by the user. It executes a script to turn of Internet in the VM (via invalid DNS) if the settings have been changed in the LinOffice GUI
     elif [ "$1" = "internet_off" ]; then
@@ -862,9 +862,9 @@ function waRunCommand() {
             $RDP_FLAGS \
             /app:program:cmd.exe,cmd:'/c C:\\OEM\\dns_off.bat' \
             /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
-    
+
         # Capture the process ID.
-        FREERDP_PID=$!  
+        FREERDP_PID=$!
 
     # This function is not meant to be used by the user. It executes a script to re-enable automatic DNS if the settings have been changed in the LinOffice GUI
     elif [ "$1" = "internet_on" ]; then
@@ -882,9 +882,9 @@ function waRunCommand() {
             $RDP_FLAGS \
             /app:program:cmd.exe,cmd:'/c C:\\OEM\\dns_on.bat' \
             /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
-    
+
         # Capture the process ID.
-        FREERDP_PID=$!  
+        FREERDP_PID=$!
 
     else
         # Script summoned from right-click menu or application icon (plus/minus a file path).
@@ -929,7 +929,7 @@ function waRunCommand() {
         else
             # Get the directory of the file
             FILE_DIR=$(dirname "$2")
-            dprint "FILE_DIR: ${FILE_DIR}"    
+            dprint "FILE_DIR: ${FILE_DIR}"
             FILE_DIRS+=("$FILE_DIR") # Add directory to array
 
             # Convert path from UNIX to Windows style.
@@ -1012,7 +1012,7 @@ function waRunCommand() {
 
         # Run cleanup immediately after process termination
         waCheckMasterCleanup "true"
-        
+
         # Exit the script
         exit 0
     fi
@@ -1052,7 +1052,7 @@ function waCheckIdle() {
 use_venv() {
   local venv_dir="$HOME/.local/bin/linoffice/venv"
   local activate_script="$venv_dir/bin/activate"
-  
+
   if [[ -f "$activate_script" ]]; then
     echo "Using virtual environment at $venv_dir"
     source "$activate_script"
