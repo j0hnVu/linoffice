@@ -63,6 +63,26 @@ print_step() {
     echo -e "\n${GREEN}Step $1:${NC} $2"
 }
 
+# Name: 'use_venv'
+# Role: Activate virtual environment if available
+use_venv() {
+  local venv_dir="$HOME/.local/bin/linoffice/venv"
+  local activate_script="$venv_dir/bin/activate"
+
+  if [[ -f "$activate_script" ]]; then
+    echo "Using virtual environment at $venv_dir"
+    source "$activate_script"
+    VENV_PATH="$venv_dir"
+    USE_VENV=1
+    return 0
+  else
+    echo "Virtual environment not found at $venv_dir"
+    return 1
+  fi
+}
+
+use_venv
+
 # Function to display usage information
 print_usage() {
     print_info "Usage: $0 [--desktop] [--firstrun] [--installoffice] [--healthcheck]"
