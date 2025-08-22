@@ -63,6 +63,9 @@ print_step() {
     echo -e "\n${GREEN}Step $1:${NC} $2"
 }
 
+USE_VENV=0
+COMPOSE_COMMAND = "podman-compose"
+
 # Name: 'use_venv'
 # Role: Activate virtual environment if available
 use_venv() {
@@ -266,37 +269,46 @@ function check_requirements() {
     # Check if podman-compose is installed
     print_info "Checking if podman-compose is installed"
 
-    if ! command -v podman-compose &> /dev/null; then
-        exit_with_error "podman-compose is not installed.
+    if USE_VENV == "0"; then
+        if ! command -v podman-compose &> /dev/null; then
+            exit_with_error "podman-compose is not installed.
 
-    HOW TO FIX:
-    Option 1 - Using pip: pip3 install podman-compose
-    Option 2 - Using package manager:
-    Ubuntu/Debian: sudo apt install podman-compose
-    Fedora: sudo dnf install podman-compose
-    OpenSUSE: sudo zypper install podman-compose
-    Arch Linux: sudo pacman -S podman-compose
+        HOW TO FIX:
+        Option 1 - Using pip: pip3 install podman-compose
+        Option 2 - Using package manager:
+        Ubuntu/Debian: sudo apt install podman-compose
+        Fedora: sudo dnf install podman-compose
+        OpenSUSE: sudo zypper install podman-compose
+        Arch Linux: sudo pacman -S podman-compose
 
-    Or visit: https://github.com/containers/podman-compose"
-    fi
+        Or visit: https://github.com/containers/podman-compose"
+        fi
+        # Check if python-dotenv is installed (dependency of podman-compose)
+        if python3 -c "import dotenv" >/dev/null 2>&1; then
+            print_success "python-dotenv is installed."
+        else
+            exit_with_error "python-dotenv is not installed.
 
-    # Check if python-dotenv is installed (dependency of podman-compose)
-    if python3 -c "import dotenv" >/dev/null 2>&1; then
-        print_success "python-dotenv is installed."
+        HOW TO FIX:
+        Using pip: pip install python-dotenv
+        If you don't have pip, you can install it with your package manager.
+        Ubuntu/Debian: sudo apt install python-dotenv
+        Fedora: sudo dnf install python-dotenv
+        OpenSUSE: sudo zypper install python-python-dotenv
+        Arch Linux: sudo pacman -S python-dotenv"
+
+        fi
     else
-        exit_with_error "python-dotenv is not installed.
+        USER_SITE_PATH=$(python3 -m site | grep USER_SITE | awk -F"'" '{print $2}')
+        PODMAN_BIN=$USER_SITE_PATH/podman_compose.py
 
-    HOW TO FIX:
-    Using pip: pip install python-dotenv
-    If you don't have pip, you can install it with your package manager.
-    Ubuntu/Debian: sudo apt install python-dotenv
-    Fedora: sudo dnf install python-dotenv
-    OpenSUSE: sudo zypper install python-python-dotenv
-    Arch Linux: sudo pacman -S python-dotenv"
-
+        if [[ -f "$PODMAN_BIN" ]]; then
+            echo "using podman-compose from venv"
+            COMPOSE_COMMAND="python $PODMAN_BIN"
+        fi
     fi
 
-    COMPOSE_VERSION=$(podman-compose --version)
+    COMPOSE_VERSION=$($COMPOSE_COMMAND --version)
     print_success "podman-compose is installed: $COMPOSE_VERSION"
 
     # Check if FreeRDP is available
@@ -600,7 +612,7 @@ function create_container() {
 
     # Start podman-compose in the background with unbuffered output and strip ANSI codes
     print_info "Starting podman-compose in detached mode..."
-    if ! podman-compose --file "$COMPOSE_FILE" up -d >>"$LOGFILE" 2>&1; then
+    if ! $COMPOSE_COMMAND --file "$COMPOSE_FILE" up -d >>"$LOGFILE" 2>&1; then
         exit_with_error "Failed to start containers. Check $LOGFILE for details."
     fi
 
@@ -742,11 +754,11 @@ function verify_container_health() {
     # Check if container is running
     if ! podman ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
         print_info "Container is not running. Attempting to start it..."
-        if ! podman-compose --file "$COMPOSE_FILE" start; then
+        if ! $COMPOSE_COMMAND --file "$COMPOSE_FILE" start; then
             print_error "Failed to start container"
             print_info "Container may be in an improper state. Try these commands to fix it:
             1. podman rm -f LinOffice
-            2. podman-compose --file config/compose.yaml up -d"
+            2. $COMPOSE_COMMAND --file config/compose.yaml up -d"
             return 1
         fi
         print_info "Waiting for container to boot..."
@@ -759,7 +771,7 @@ function verify_container_health() {
         print_error "Container logs show potential issues"
         print_info "If the container is in an improper state, try these commands to fix it:
         1. podman rm -f LinOffice
-        2. podman-compose --file config/compose.yaml up -d"
+        2. $COMPOSE_COMMAND --file config/compose.yaml up -d"
         return 1
     fi
 
@@ -1190,7 +1202,7 @@ if ! check_progress "$PROGRESS_OFFICE" || [ "$FIRSTRUN" = true ]; then
     if [ "$FIRSTRUN" = true ]; then
         if ! podman ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
             print_info "Container is not running. Starting LinOffice container for --firstrun..."
-            if ! podman-compose --file "$COMPOSE_FILE" start; then
+            if ! $COMPOSE_COMMAND --file "$COMPOSE_FILE" start; then
                 exit_with_error "Failed to start LinOffice container for --firstrun."
             fi
             print_info "Waiting 20 seconds for container to boot..."
