@@ -11,6 +11,13 @@ GITHUB_API_URL="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases
 
 LINOFFICE_SCRIPT="$TARGET_DIR/gui/linoffice.py"
 
+# Virtual environment support
+USE_VENV=0
+VENV_PATH=""
+
+# Immutable system support
+USE_IMMUTABLE=0
+
 ##################################################
 # PART 1: INSTALL DEPENDENCIES
 ##################################################
@@ -26,9 +33,20 @@ detect_package_manager() {
     exit 1
   fi
 
-  # Reject immutable systems
+  # Check for immutable systems
+  if command -v rpm-ostree >/dev/null 2>&1; then
+    echo "Detected Fedora Atomic or another immutable system using rpm-ostree"
+    check_immutable_dependencies "rpm-ostree"
+    return
+  elif command -v transactional-update >/dev/null 2>&1; then
+    echo "Detected openSUSE MicroOS or anotherimmutable system using transactional-update"
+    check_immutable_dependencies "transactional-update"
+    return
+  fi
+
+  # Reject other systems
   case "$DISTRO_ID" in
-    nixos|guix|silverblue|coreos|kinoite|microos)
+    nixos|guix|steamos|slackware|gentoo|alpine)
       echo "Unsupported system type: $DISTRO_ID"
       exit 1
       ;;
@@ -43,6 +61,74 @@ detect_package_manager() {
 
   echo "Unsupported package manager"
   exit 1
+}
+
+# Check dependencies for immutable systems
+check_immutable_dependencies() {
+  local immutable_tool="$1"
+  local missing_pkgs=()
+  local need_pip=false
+  local need_flatpak=false
+  
+  echo "Checking required packages for immutable system..."
+  
+  # Check podman (always required)
+  if ! command -v podman >/dev/null 2>&1; then
+    missing_pkgs+=("podman")
+  fi
+  
+  # Check Python (always required)
+  if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
+    missing_pkgs+=("python3")
+  fi
+  
+  # Check if we need pip (only if podman-compose or PySide6 are not available)
+  if ! pkg_exists podman-compose || ! python3 -c "import PySide6" 2>/dev/null; then
+    need_pip=true
+    if ! command -v pip3 >/dev/null 2>&1 && ! command -v pip >/dev/null 2>&1; then
+      missing_pkgs+=("python3-pip")
+    fi
+  fi
+  
+  # Check if we need flatpak (only if FreeRDP is not available)
+  if ! freerdp_version_ok; then
+    need_flatpak=true
+    if ! command -v flatpak >/dev/null 2>&1; then
+      missing_pkgs+=("flatpak")
+    fi
+  fi
+  
+  if [ ${#missing_pkgs[@]} -gt 0 ]; then
+    echo "❌ Missing required packages: ${missing_pkgs[*]}"
+    echo ""
+    echo "Please install them using:"
+    if [ "$immutable_tool" = "rpm-ostree" ]; then
+      echo "  sudo rpm-ostree install ${missing_pkgs[*]}"
+      echo "  sudo systemctl reboot"
+    elif [ "$immutable_tool" = "transactional-update" ]; then
+      echo "  sudo transactional-update pkg install ${missing_pkgs[*]}"
+      echo "  sudo transactional-update reboot"
+    fi
+    echo ""
+    echo "After reboot, run this installer again."
+    exit 1
+  fi
+  
+  echo "✅ All required packages are available"
+  if [ "$need_pip" = true ]; then
+    echo "Will use pip for Python dependencies"
+  fi
+  if [ "$need_flatpak" = true ]; then
+    echo "Will use flatpak for FreeRDP"
+  fi
+  if [ "$need_pip" = false ] && [ "$need_flatpak" = false ]; then
+    echo "All dependencies already available via system packages"
+  fi
+  
+  # Set flag to use pip-based installation and set dummy package manager
+  USE_IMMUTABLE=1
+  PKG_MGR="unknown"
+  return 0
 }
 
 # Generic install function
@@ -122,17 +208,54 @@ install_freerdp_flatpak() {
   fi
 
   if ! flatpak remote-list | grep -q flathub; then
-    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+    flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
   fi
 
   flatpak install -y --user flathub com.freerdp.FreeRDP
+}
+
+# Virtual environment setup function
+use_venv() {
+  local python_cmd=""
+  local venv_dir="$TARGET_DIR/venv"
+  
+  # Find Python command
+  if command -v python3 >/dev/null 2>&1; then
+    python_cmd="python3"
+  elif command -v python >/dev/null 2>&1; then
+    python_cmd="python"
+  else
+    echo "Python not found, cannot create venv"
+    return 1
+  fi
+  
+  # Check if venv module is available
+  if ! "$python_cmd" -c "import venv" 2>/dev/null; then
+    echo "venv module not available, falling back to system Python"
+    return 1
+  fi
+  
+  echo "Creating virtual environment..."
+  if "$python_cmd" -m venv --system-site-packages "$venv_dir"; then
+    VENV_PATH="$venv_dir"
+    USE_VENV=1
+    echo "Virtual environment created successfully"
+    return 0
+  else
+    echo "Failed to create virtual environment, falling back to system Python"
+    return 1
+  fi
 }
 
 # Main script for installing dependencies
 dependencies_main() {
   detect_package_manager
 
-  echo "Detected distro: $DISTRO_ID, package manager: $PKG_MGR"
+  if [ "$USE_IMMUTABLE" -eq 1 ]; then
+    echo "Detected distro: $DISTRO_ID (immutable system)"
+  else
+    echo "Detected distro: $DISTRO_ID, package manager: $PKG_MGR"
+  fi
 
   echo "Checking podman..."
   if ! pkg_exists podman; then
@@ -147,43 +270,109 @@ dependencies_main() {
   echo "Checking FreeRDP (version >= 3)..."
   if freerdp_version_ok; then
     echo "FreeRDP is already version >= 3"
+    if [ "$USE_IMMUTABLE" -eq 1 ]; then
+      echo "FreeRDP already available via system package manager"
+    fi
   else
-    try_install_any freerdp3 freerdp3-x11 freerdp || true
-    if ! freerdp_version_ok; then
-      echo "Falling back to Flatpak for FreeRDP"
+    if [ "$USE_IMMUTABLE" -eq 1 ]; then
+      echo "Installing FreeRDP via flatpak for immutable system..."
       install_freerdp_flatpak
+    else
+      try_install_any freerdp3 freerdp3-x11 freerdp || true
+      if ! freerdp_version_ok; then
+        echo "Falling back to Flatpak for FreeRDP"
+        install_freerdp_flatpak
+      fi
     fi
   fi
 
-  echo "Checking podman-compose..."
+  # Check if podman-compose needs to be installed via pip
+  NEED_PODMAN_COMPOSE_PIP=false
   if ! pkg_exists podman-compose; then
-    try_install_any podman-compose || true
-    if ! pkg_exists podman-compose; then
-      echo "Trying pip fallback for podman-compose"
-      ensure_pip
-      pip3 install --user --break-system-packages podman-compose || pip install --user --break-system-packages podman-compose
-      export PATH="$HOME/.local/bin:$PATH"
+    if [ "$USE_IMMUTABLE" -eq 1 ]; then
+      echo "podman-compose not available, will install via pip for immutable system"
+      NEED_PODMAN_COMPOSE_PIP=true
+    else
+      try_install_any podman-compose || true
       if ! pkg_exists podman-compose; then
-        echo "podman-compose still not available after pip install"
-        exit 1
+        echo "podman-compose not available via package manager, will install via pip"
+        NEED_PODMAN_COMPOSE_PIP=true
       fi
+    fi
+  else
+    if [ "$USE_IMMUTABLE" -eq 1 ]; then
+      echo "podman-compose already available via system package manager"
     fi
   fi
 
-  echo "Checking PySide6..."
+  # Check if PySide6 needs to be installed via pip
+  NEED_PYSIDE6_PIP=false
   if ! python3 -c "import PySide6" 2>/dev/null; then
-    try_install_any python3-pyside6 python-pyside6 python3-pyside6.qtcore || true
-    if ! python3 -c "import PySide6" 2>/dev/null; then
-      echo "Falling back to pip for PySide6"
-      ensure_pip
-      pip3 install --user --break-system-packages PySide6 || pip install --user --break-system-packages PySide6
+    if [ "$USE_IMMUTABLE" -eq 1 ]; then
+      echo "PySide6 not available, will install via pip for immutable system"
+      NEED_PYSIDE6_PIP=true
+    else
+      try_install_any python3-pyside6 python-pyside6 python3-pyside6.qtcore || true
       if ! python3 -c "import PySide6" 2>/dev/null; then
-        echo "Failed to install PySide6"
-        exit 1
+        echo "PySide6 not available via package manager, will install via pip"
+        NEED_PYSIDE6_PIP=true
       fi
+    fi
+  else
+    if [ "$USE_IMMUTABLE" -eq 1 ]; then
+      echo "PySide6 already available via system package manager"
     fi
   fi
 
+  # Install Python dependencies via pip if needed
+  if [ "$NEED_PODMAN_COMPOSE_PIP" = true ] || [ "$NEED_PYSIDE6_PIP" = true ]; then
+    echo "Setting up Python environment for pip installations..."
+    
+    if use_venv; then
+      echo "Using virtual environment for Python dependencies"
+      source "$VENV_PATH/bin/activate"
+      
+      if [ "$NEED_PODMAN_COMPOSE_PIP" = true ]; then
+        echo "Installing podman-compose via pip in virtual environment"
+        ensure_pip
+        pip3 install --user podman-compose || pip install --user podman-compose
+        export PATH="$HOME/.local/bin:$PATH"
+      fi
+      
+      if [ "$NEED_PYSIDE6_PIP" = true ]; then
+        echo "Installing PySide6 via pip in virtual environment"
+        ensure_pip
+        pip3 install --user PySide6 || pip install --user PySide6
+      fi
+      
+      deactivate
+    else
+      echo "Using system Python"
+      
+      if [ "$NEED_PODMAN_COMPOSE_PIP" = true ]; then
+        echo "Installing podman-compose via pip with --break-system-packages"
+        ensure_pip
+        pip3 install --user --break-system-packages podman-compose || pip install --user --break-system-packages podman-compose
+        export PATH="$HOME/.local/bin:$PATH"
+      fi
+      
+      if [ "$NEED_PYSIDE6_PIP" = true ]; then
+        echo "Installing PySide6 via pip with --break-system-packages"
+        ensure_pip
+        pip3 install --user --break-system-packages PySide6 || pip install --user --break-system-packages PySide6
+        
+        # Verify PySide6 installation
+        if ! python3 -c "import PySide6" 2>/dev/null; then
+          echo "Failed to install PySide6"
+          exit 1
+        fi
+      fi
+    fi
+  else
+    if [ "$USE_IMMUTABLE" -eq 1 ]; then
+      echo "All Python dependencies already available via system package manager"
+    fi
+  fi
 
   echo "✅ All dependencies installed successfully!"
 }
@@ -271,8 +460,10 @@ start_linoffice() {
   # Run the linoffice installer
   echo "Starting Linoffice..."
 
-  # Check if python3 exists
-  if command -v python3 >/dev/null 2>&1; then
+  # Check for virtual environment first, then fall back to system Python
+  if [[ "$USE_VENV" == "1" && -f "$VENV_PATH/bin/python3" ]]; then
+    PYTHON_CMD="$VENV_PATH/bin/python3"
+  elif command -v python3 >/dev/null 2>&1; then
     PYTHON_CMD="python3"
   elif command -v python >/dev/null 2>&1; then
     PYTHON_CMD="python"
@@ -288,7 +479,7 @@ start_linoffice() {
   fi
 
   echo "Running $LINOFFICE_SCRIPT with $PYTHON_CMD..."
-  nohup "$PYTHON_CMD" "$LINOFFICE_SCRIPT" &
+  nohup "$PYTHON_CMD" "$LINOFFICE_SCRIPT" > /dev/null 2>&1 &
 }
 
 ##################################################
