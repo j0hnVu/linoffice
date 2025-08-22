@@ -218,7 +218,8 @@ install_freerdp_flatpak() {
     try_install_any flatpak || { echo "Failed to install flatpak"; exit 1; }
   fi
 
-  if ! flatpak remote-list | grep -q flathub; then
+# make sure to specifically detect flathub user, not flathub system
+  if ! flatpak remote-list | grep -q 'flathub.*user'; then
     flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
   fi
 
