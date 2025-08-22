@@ -94,9 +94,7 @@ use_venv() {
   fi
 }
 
-if [[ -f "$HOME/.local/bin/linoffice/venv/bin/activate" ]]; then
-  use_venv
-fi
+use_venv
 
 # Function to display usage information
 print_usage() {
