@@ -46,6 +46,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+USE_VENV=0
+
+COMPOSE_COMMAND="podman-compose"
+
 # Functions to print colored output
 print_error() {
     echo -e "${RED}ERROR:${NC} $1" >&2
@@ -63,9 +67,6 @@ print_step() {
     echo -e "\n${GREEN}Step $1:${NC} $2"
 }
 
-USE_VENV=0
-COMPOSE_COMMAND = "podman-compose"
-
 # Name: 'use_venv'
 # Role: Activate virtual environment if available
 use_venv() {
@@ -77,6 +78,15 @@ use_venv() {
     source "$activate_script"
     VENV_PATH="$venv_dir"
     USE_VENV=1
+
+    USER_SITE_PATH=$(python3 -m site | grep USER_SITE | awk -F"'" '{print $2}')
+    PODMAN_BIN=$USER_SITE_PATH/podman_compose.py
+
+    if [[ -f "$PODMAN_BIN" ]]; then
+        echo "using podman-compose from venv"
+        COMPOSE_COMMAND="python $PODMAN_BIN"
+    fi
+
     return 0
   else
     echo "Virtual environment not found at $venv_dir"
@@ -297,14 +307,6 @@ function check_requirements() {
         OpenSUSE: sudo zypper install python-python-dotenv
         Arch Linux: sudo pacman -S python-dotenv"
 
-        fi
-    else
-        USER_SITE_PATH=$(python3 -m site | grep USER_SITE | awk -F"'" '{print $2}')
-        PODMAN_BIN=$USER_SITE_PATH/podman_compose.py
-
-        if [[ -f "$PODMAN_BIN" ]]; then
-            echo "using podman-compose from venv"
-            COMPOSE_COMMAND="python $PODMAN_BIN"
         fi
     fi
 
