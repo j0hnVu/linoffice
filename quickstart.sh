@@ -44,9 +44,20 @@ detect_package_manager() {
     return
   fi
 
+  # steamos case
+  case "$DISTRO_ID" in
+    steamos)
+      echo "SteamOS: $DISTRO_ID"
+      # Set flag to use pip-based installation and set dummy package manager
+      USE_IMMUTABLE=1
+      PKG_MGR="unknown"
+      return
+      ;;
+  esac
+
   # Reject other systems
   case "$DISTRO_ID" in
-    nixos|guix|steamos|slackware|gentoo|alpine)
+    nixos|guix|slackware|gentoo|alpine)
       echo "Unsupported system type: $DISTRO_ID"
       exit 1
       ;;
