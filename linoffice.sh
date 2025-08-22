@@ -59,6 +59,10 @@ NEEDED_BOOT=false
 IS_OFFICE_WXP_APP=false  
 SCRIPT_START_TIME=0      
 
+# Virtual environment support
+USE_VENV=0
+VENV_PATH=""
+
 ### TRAPS ###
 # Catch SIGINT (CTRL+C) to call 'waCleanUp'.
 trap waCleanupInstance SIGINT SIGTERM SIGHUP EXIT
@@ -1043,6 +1047,24 @@ function waCheckIdle() {
     fi
 }
 
+# Name: 'use_venv'
+# Role: Activate virtual environment if available
+use_venv() {
+  local venv_dir="$HOME/.local/bin/linoffice/venv"
+  local activate_script="$venv_dir/bin/activate"
+  
+  if [[ -f "$activate_script" ]]; then
+    echo "Using virtual environment at $venv_dir"
+    source "$activate_script"
+    VENV_PATH="$venv_dir"
+    USE_VENV=1
+    return 0
+  else
+    echo "Virtual environment not found at $venv_dir"
+    return 1
+  fi
+}
+
 ### MAIN LOGIC ###
 dprint "START"
 dprint "SCRIPT_DIR: ${SCRIPT_DIR_PATH}"
@@ -1054,6 +1076,10 @@ waLastRun
 waLoadConfig
 waGetFreeRDPCommand
 waCheckContainerRunning
+
+# Check for virtual environment
+echo "Checking for virtual environment..."
+use_venv || echo "Using system Python"
 
 # Check if --startcontainer flag is present
 START_CONTAINER=false
