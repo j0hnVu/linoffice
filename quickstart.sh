@@ -461,6 +461,8 @@ download_latest() {
 
   rm -rf "$TMPDIR"
 
+  cp ./linoffice.sh $HOME/.local/bin/linoffice/linoffice.sh
+
   echo "✅ Linoffice v${LATEST_VERSION} installed at $TARGET_DIR"
 }
 
