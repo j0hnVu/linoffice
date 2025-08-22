@@ -172,6 +172,7 @@ function clear_progress() {
 # Function to detect and set the FreeRDP command
 function detect_freerdp_command() {
     # Set FREERDP_COMMAND to the first available FreeRDP command (xfreerdp, xfreerdp3, or flatpak)
+    # check xfreerdp3 before xfreerdp, some systems have both installed. e.g. SteamOS has outdated xfreerdp, but also has xfreerdp3 installed
     if command -v xfreerdp3 &>/dev/null; then
         FREERDP_COMMAND="xfreerdp3"
         return
