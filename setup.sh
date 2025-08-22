@@ -162,10 +162,6 @@ function clear_progress() {
 # Function to detect and set the FreeRDP command
 function detect_freerdp_command() {
     # Set FREERDP_COMMAND to the first available FreeRDP command (xfreerdp, xfreerdp3, or flatpak)
-    if command -v xfreerdp &>/dev/null; then
-        FREERDP_COMMAND="xfreerdp"
-        return
-    fi
     if command -v xfreerdp3 &>/dev/null; then
         FREERDP_COMMAND="xfreerdp3"
         return
@@ -175,6 +171,10 @@ function detect_freerdp_command() {
             FREERDP_COMMAND="flatpak run --command=xfreerdp com.freerdp.FreeRDP"
             return
         fi
+    fi
+    if command -v xfreerdp &>/dev/null; then
+        FREERDP_COMMAND="xfreerdp"
+        return
     fi
     FREERDP_COMMAND="" # Not found
 }
