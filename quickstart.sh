@@ -80,19 +80,19 @@ check_immutable_dependencies() {
   local missing_pkgs=()
   local need_pip=false
   local need_flatpak=false
-
+  
   echo "Checking required packages for immutable system..."
-
+  
   # Check podman (always required)
   if ! command -v podman >/dev/null 2>&1; then
     missing_pkgs+=("podman")
   fi
-
+  
   # Check Python (always required)
   if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
     missing_pkgs+=("python3")
   fi
-
+  
   # Check if we need pip (only if podman-compose or PySide6 are not available)
   if ! pkg_exists podman-compose || ! python3 -c "import PySide6" 2>/dev/null; then
     need_pip=true
@@ -100,7 +100,7 @@ check_immutable_dependencies() {
       missing_pkgs+=("python3-pip")
     fi
   fi
-
+  
   # Check if we need flatpak (only if FreeRDP is not available)
   if ! freerdp_version_ok; then
     need_flatpak=true
@@ -108,7 +108,7 @@ check_immutable_dependencies() {
       missing_pkgs+=("flatpak")
     fi
   fi
-
+  
   if [ ${#missing_pkgs[@]} -gt 0 ]; then
     echo "❌ Missing required packages: ${missing_pkgs[*]}"
     echo ""
@@ -124,7 +124,7 @@ check_immutable_dependencies() {
     echo "After reboot, run this installer again."
     exit 1
   fi
-
+  
   echo "✅ All required packages are available"
   if [ "$need_pip" = true ]; then
     echo "Will use pip for Python dependencies"
@@ -135,7 +135,7 @@ check_immutable_dependencies() {
   if [ "$need_pip" = false ] && [ "$need_flatpak" = false ]; then
     echo "All dependencies already available via system packages"
   fi
-
+  
   # Set flag to use pip-based installation and set dummy package manager
   USE_IMMUTABLE=1
   PKG_MGR="unknown"
@@ -230,7 +230,7 @@ install_freerdp_flatpak() {
 use_venv() {
   local python_cmd=""
   local venv_dir="$TARGET_DIR/venv"
-
+  
   # Find Python command
   if command -v python3 >/dev/null 2>&1; then
     python_cmd="python3"
@@ -240,13 +240,13 @@ use_venv() {
     echo "Python not found, cannot create venv"
     return 1
   fi
-
+  
   # Check if venv module is available
   if ! "$python_cmd" -c "import venv" 2>/dev/null; then
     echo "venv module not available, falling back to system Python"
     return 1
   fi
-
+  
   echo "Creating virtual environment..."
   if "$python_cmd" -m venv --system-site-packages "$venv_dir"; then
     VENV_PATH="$venv_dir"
@@ -339,40 +339,40 @@ dependencies_main() {
   # Install Python dependencies via pip if needed
   if [ "$NEED_PODMAN_COMPOSE_PIP" = true ] || [ "$NEED_PYSIDE6_PIP" = true ]; then
     echo "Setting up Python environment for pip installations..."
-
+    
     if use_venv; then
       echo "Using virtual environment for Python dependencies"
       source "$VENV_PATH/bin/activate"
-
+      
       if [ "$NEED_PODMAN_COMPOSE_PIP" = true ]; then
         echo "Installing podman-compose via pip in virtual environment"
         ensure_pip
         pip3 install --user podman-compose || pip install --user podman-compose
         export PATH="$HOME/.local/bin:$PATH"
       fi
-
+      
       if [ "$NEED_PYSIDE6_PIP" = true ]; then
         echo "Installing PySide6 via pip in virtual environment"
         ensure_pip
         pip3 install --user PySide6 || pip install --user PySide6
       fi
-
+      
       deactivate
     else
       echo "Using system Python"
-
+      
       if [ "$NEED_PODMAN_COMPOSE_PIP" = true ]; then
         echo "Installing podman-compose via pip with --break-system-packages"
         ensure_pip
         pip3 install --user --break-system-packages podman-compose || pip install --user --break-system-packages podman-compose
         export PATH="$HOME/.local/bin:$PATH"
       fi
-
+      
       if [ "$NEED_PYSIDE6_PIP" = true ]; then
         echo "Installing PySide6 via pip with --break-system-packages"
         ensure_pip
         pip3 install --user --break-system-packages PySide6 || pip install --user --break-system-packages PySide6
-
+        
         # Verify PySide6 installation
         if ! python3 -c "import PySide6" 2>/dev/null; then
           echo "Failed to install PySide6"
