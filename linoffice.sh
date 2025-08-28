@@ -37,7 +37,7 @@ readonly RDP_IP="127.0.0.1"
 readonly RDP_PORT="3388"
 readonly RUNID="${RANDOM}"
 readonly WAFLAVOR="podman"
-readonly COMPOSE_COMMAND="podman-compose"
+COMPOSE_COMMAND="podman-compose"
 
 ### GLOBAL VARIABLES ###
 # WINAPPS CONFIGURATION FILE
