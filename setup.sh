@@ -280,7 +280,7 @@ function check_requirements() {
     # Check if podman-compose is installed
     print_info "Checking if podman-compose is installed"
 
-    if USE_VENV == "0"; then
+    if [[ "$USE_VENV" -eq 0 ]]; then
         if ! command -v podman-compose &> /dev/null; then
             exit_with_error "podman-compose is not installed.
 
