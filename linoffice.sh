@@ -1059,12 +1059,14 @@ use_venv() {
     VENV_PATH="$venv_dir"
     USE_VENV=1
 
-    USER_SITE_PATH=$(python3 -m site | grep USER_SITE | awk -F"'" '{print $2}')
+    PYTHON_PATH="$venv_dir/bin/python3"
+
+    USER_SITE_PATH=$($PYTHON_PATH -m site | grep USER_SITE | awk -F"'" '{print $2}')
     PODMAN_BIN=$USER_SITE_PATH/podman_compose.py
 
     if [[ -f "$PODMAN_BIN" ]]; then
         echo "using podman-compose from venv"
-        COMPOSE_COMMAND="python $PODMAN_BIN"
+        COMPOSE_COMMAND="$PYTHON_PATH $PODMAN_BIN"
     fi
     return 0
   else
