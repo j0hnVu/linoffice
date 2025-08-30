@@ -93,7 +93,7 @@ This should automatically install all the required dependencies for most distros
 >The script will install Podman, Podman-Compose, FreeRDP3, Python3 and PySide6 on your computer. If they are not available in your repo, they will be installed via Flatpak or Pip where possible.
 
 >[!WARNING]
->The quickstart script will fail if you are using an immutable distro (e.g. Fedora Atomic), NixOS, Slackware, Gentoo, or Alpine. In this case you will need to do install the dependencies yourself (see below).
+>The quickstart script will fail if you are using NixOS, Guix System, Slackware, Gentoo, or Alpine. In this case you will need to do install the dependencies yourself (see below).
 
 ## Manual install
 

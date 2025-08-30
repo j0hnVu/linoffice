@@ -37,7 +37,7 @@ readonly RDP_IP="127.0.0.1"
 readonly RDP_PORT="3388"
 readonly RUNID="${RANDOM}"
 readonly WAFLAVOR="podman"
-readonly COMPOSE_COMMAND="podman-compose"
+COMPOSE_COMMAND="podman-compose"
 
 ### GLOBAL VARIABLES ###
 # WINAPPS CONFIGURATION FILE
@@ -1059,6 +1059,16 @@ use_venv() {
     source "$activate_script"
     VENV_PATH="$venv_dir"
     USE_VENV=1
+
+    PYTHON_PATH="$venv_dir/bin/python3"
+
+    USER_SITE_PATH=$($PYTHON_PATH -m site | grep USER_SITE | awk -F"'" '{print $2}')
+    PODMAN_BIN=$USER_SITE_PATH/podman_compose.py
+
+    if [[ -f "$PODMAN_BIN" ]]; then
+        echo "using podman-compose from venv"
+        COMPOSE_COMMAND="$PYTHON_PATH $PODMAN_BIN"
+    fi
     return 0
   else
     echo "Virtual environment not found at $venv_dir"
