@@ -462,14 +462,30 @@ function check_requirements() {
     if podman info --format '{{.Host.Security.Rootless}}' | grep -q true; then
         IS_ROOTLESS=true
         STORAGE_DIR="$HOME/.local/share/containers/storage"
-        NETWORK_DIR="$HOME/.local/share/containers/storage/networks"
     else
         IS_ROOTLESS=false
         STORAGE_DIR="/var/lib/containers/storage"
-        NETWORK_DIR="/run/containers/storage/networks"
     fi
     print_info "Podman running in $( $IS_ROOTLESS && echo 'rootless' || echo 'rootful' ) mode"
-    
+
+    # Set network directory paths based on rootless status first
+    if [ "$IS_ROOTLESS" = true ]; then
+        NETAVARK_DIR="$HOME/.local/share/containers/networks"
+        CNI_DIR="$HOME/.config/cni/net.d"
+    else
+        NETAVARK_DIR="/var/lib/containers/networks"
+        CNI_DIR="/etc/cni/net.d"
+    fi
+
+    # Now select the correct directory based on the network backend
+    if [ "$NETWORK_BACKEND" = "netavark" ]; then
+        NETWORK_DIR="$NETAVARK_DIR"
+    else
+        # Default to CNI backend
+        NETWORK_DIR="$CNI_DIR"
+    fi
+    print_info "Podman network directory: $NETWORK_DIR"
+
     # Check if storage directory is accessible
     if [ ! -d "$STORAGE_DIR" ] || [ ! -w "$STORAGE_DIR" ]; then
         exit_with_error "Podman storage directory inaccessible: $STORAGE_DIR
