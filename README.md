@@ -36,6 +36,7 @@ The project utilises [Winapps](https://github.com/winapps-org/winapps), [Dockur/
 ### Planned features
 
 - [ ] Logo to use for the GUI
+- [ ] Translations for the GUI
 - [ ] Deliver as Flatpak or AppImage, which would have these benefits:
     - Bundles dependencies such as FreeRDP and Podman-Compose; only Podman would need to be installed on the system already
     - Installation and uninstallation more straight-forward for Linux beginners 
