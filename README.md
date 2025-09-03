@@ -189,6 +189,7 @@ If you are using the terminal commands often, you might want to create an alias 
 - `linoffice windows`:  shows the whole Windows desktop in an RDP session
 - `linoffice update`: runs an update script for Windows in Powershell
 - `linoffice reset`: kills all FreeRDP processes, cleans up Office lock files, and reboots the Windows VM
+- `linoffice stopcontainer`: stops and then removes the podman container (but not its data) and cleans up all associated resources
 - `linoffice cleanup [--full|--reset]`: cleans up Office lock files (such as ~$file.xlsx) in the home folder and removable media; `--full` cleans all files regardless of creation date, `--reset` resets the last cleanup timestamp
 
 ### Office activation 
@@ -218,6 +219,8 @@ If you can't get the setup to work, please [create a bug report ("setup didn't w
 
 In my experience, window management can be wonky, particularly if you're using Wayland instead of X11 or if you're using multiple monitors.
 
+A potential solution for multimonitor issues could be to open the file `config/linoffice.conf` and in the last line (`RDP_FLAGS`) adding `/multimon`. This is supposed to add multimonitor support to FreeRDP, but a FreeRDP bug may result in a black screen, in which case you should revert this change.
+
 <details><summary>Examples</summary>
     
 - Using multiple Office documents/windows can be tricky. For example, opening an Office window might not open until you start it a second time and you may or may not get two windows then. Or, opening a new Office window might close already open ones. Don't panic - your documents are not lost. Just launch the latest Office window again and you should now see both the new one and old one. Sometimes, opening a new windows might also have the quirk that the focus is on the older Office window which is sitting in the background. The solution is to minimize the old one so that the focus is gone..
@@ -243,6 +246,8 @@ Option 2 (if the above doesn't work):
 - Access the Windows VM, either via RDP (`./linoffice.sh windows`) or VNC (`127.0.0.1:8006` in the browser, password is `MyWindowsPassword`)
 - Open the Windows Settings app and set your keyboard layout in there.
 - Open the Command Prompt (cmd.exe) and enter: `REG ADD "HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout" /v IgnoreRemoteKeyboardLayout /t REG_DWORD /d 1` (this tells Windows to use its own keyboard layout and not whatever the RDP client uses)
+
+If you are using multiple keyboard layouts in Linux (e.g. a Latin and non-Latin script, changing the keyboard automatically is not supported yet (i.e. syncing the Windows keyboard layout with the Linux one whenever it is switched), but there is a workaround: https://github.com/winapps-org/winapps/issues/43#issuecomment-3227432458
 
 ### Orphaned lock files
 
