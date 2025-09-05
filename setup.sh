@@ -840,8 +840,10 @@ function check_available() {
     print_step "7" "Checking if everything is set up correctly"
     print_info "Checking if RDP server is available"
     local max_attempts=30 
+    local reboot_threshold=15
     local attempt=0
     local success=0
+    local vm_rebooted=false
     
     if [ ! -e "$SUCCESS_FILE" ]; then
         while [ $attempt -lt $max_attempts ]; do
@@ -890,6 +892,59 @@ function check_available() {
                 print_success "RDP server is available (user logoff detected)"
                 success=1
                 break
+            fi
+
+            # If we've reached the reboot threshold and haven't rebooted yet, reboot the VM
+            if [ $attempt -eq $reboot_threshold ] && [ "$vm_rebooted" = false ]; then
+                print_info "Reached $reboot_threshold failed attempts. Rebooting Windows VM to restart Office installation..."
+                vm_rebooted=true
+                
+                # Reboot the Windows VM using the existing reset functionality
+                print_info "Rebooting Windows VM..."
+                "$COMPOSE_COMMAND" --file "$COMPOSE_FILE" restart >>"$LOGFILE" 2>&1
+                
+                # Wait for container to restart
+                local max_wait_time=120
+                local wait_elapsed=0
+                local check_interval=5
+                
+                print_info "Waiting for Windows VM to restart..."
+                while [ $wait_elapsed -lt $max_wait_time ]; do
+                    if timeout 1 bash -c ">/dev/tcp/127.0.0.1/3388" 2>/dev/null; then
+                        print_success "Windows VM restarted successfully"
+                        break
+                    fi
+                    sleep $check_interval
+                    wait_elapsed=$((wait_elapsed + check_interval))
+                    if [ $((wait_elapsed % 30)) -eq 0 ]; then
+                        print_info "Still waiting for Windows VM to restart... ($((wait_elapsed/60)) minutes elapsed)"
+                    fi
+                done
+                
+                if [ $wait_elapsed -ge $max_wait_time ]; then
+                    print_error "Timeout waiting for Windows VM to restart. Please check the container status."
+                    return 1
+                fi
+                
+                # Wait a bit more for Windows to fully boot
+                print_info "Waiting for Windows to fully boot..."
+                sleep 30
+                
+                # Now run the Office installation command
+                print_info "Restarting Office installation after VM reboot..."
+                echo "DEBUG: Running Office installation after VM reboot" >> "$LOGFILE"
+                
+                "$FREERDP_COMMAND" \
+                    /cert:ignore \
+                    +home-drive \
+                    /u:MyWindowsUser \
+                    /p:MyWindowsPassword \
+                    /v:127.0.0.1 \
+                    /port:3388 \
+                    /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\InstallOffice.ps1' \
+                    >>"$LOGFILE" 2>&1 &
+                
+                print_info "Office installation command sent. Continuing with RDP connection attempts..."
             fi
 
             # If unable to connect, try again
