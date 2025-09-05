@@ -675,6 +675,7 @@ class TroubleshootingWindow(QMainWindow):
         self.ui.pushButton_lockfiles.clicked.connect(self.run_cleanup_full)
         self.ui.pushButton_desktopfiles.clicked.connect(self.run_setup_desktop)
         self.ui.pushButton_reset.clicked.connect(self.run_reset)
+        self.ui.pushButton_stopcontainer.clicked.connect(self.run_stopcontainer)
         self.ui.pushButton_logfile.clicked.connect(self.open_logfile)
         self.ui.pushButton_website.clicked.connect(self.open_website)
         self.ui.pushButton_uninstall.clicked.connect(self.run_uninstall)
@@ -711,6 +712,9 @@ class TroubleshootingWindow(QMainWindow):
 
     def run_reset(self):
         subprocess.Popen([LINOFFICE_SCRIPT, 'reset'])
+
+    def run_stopcontainer(self):
+        subprocess.Popen([LINOFFICE_SCRIPT, '--stopcontainer'])
 
     def open_logfile(self):
         logfile = os.path.expanduser('~/.local/share/linoffice/linoffice.log')

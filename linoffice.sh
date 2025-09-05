@@ -1060,14 +1060,18 @@ use_venv() {
     VENV_PATH="$venv_dir"
     USE_VENV=1
 
-    PYTHON_PATH="$venv_dir/bin/python3"
+    # Only use venv podman-compose if system version is not available
+    if [[ ! -x "/usr/bin/podman-compose" ]] && ! command -v podman-compose &>/dev/null; then
+        PYTHON_PATH="$venv_dir/bin/python3"
+        USER_SITE_PATH=$($PYTHON_PATH -m site | grep USER_SITE | awk -F"'" '{print $2}')
+        PODMAN_BIN=$USER_SITE_PATH/podman_compose.py
 
-    USER_SITE_PATH=$($PYTHON_PATH -m site | grep USER_SITE | awk -F"'" '{print $2}')
-    PODMAN_BIN=$USER_SITE_PATH/podman_compose.py
-
-    if [[ -f "$PODMAN_BIN" ]]; then
-        echo "using podman-compose from venv"
-        COMPOSE_COMMAND="$PYTHON_PATH $PODMAN_BIN"
+        if [[ -f "$PODMAN_BIN" ]]; then
+            echo "using podman-compose from venv (system version not available)"
+            COMPOSE_COMMAND="$PYTHON_PATH $PODMAN_BIN"
+        fi
+    else
+        echo "system podman-compose available (will be used instead of venv version)"
     fi
     return 0
   else
@@ -1096,8 +1100,7 @@ if [[ "$1" == "--stopcontainer" ]]; then
     # Now, if the container is running (or was just un-paused), stop it
     if [[ "$CONTAINER_STATUS" == "running" || "$CONTAINER_STATUS" == "paused" ]]; then
         echo "Sending stop command... (this may take up to 2 minutes)"
-        # Use podman-compose stop, which respects the grace period in the yaml
-        "$COMPOSE_COMMAND" --file "$COMPOSE_PATH" stop &>/dev/null
+        podman stop "$CONTAINER_NAME" &>/dev/null
     else
         echo "Container is not running."
     fi
@@ -1119,11 +1122,25 @@ SCRIPT_START_TIME=$(date +%s)
 waLastRun
 waLoadConfig
 waGetFreeRDPCommand
-waCheckContainerRunning
 
 # Check for virtual environment
 echo "Checking for virtual environment..."
 use_venv || echo "Using system Python"
+
+# Ensure COMPOSE_COMMAND is set to a working value
+# First try the system podman-compose if it exists and is executable
+if [[ -x "/usr/bin/podman-compose" ]]; then
+    COMPOSE_COMMAND="/usr/bin/podman-compose"
+    echo "Using system podman-compose from /usr/bin/"
+elif command -v podman-compose &>/dev/null; then
+    COMPOSE_COMMAND="podman-compose"
+    echo "Using podman-compose from PATH"
+else
+    echo "ERROR: No working podman-compose found"
+    exit 1
+fi
+
+waCheckContainerRunning
 
 # Check if --startcontainer flag is present
 START_CONTAINER=false

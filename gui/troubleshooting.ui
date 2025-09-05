@@ -85,6 +85,16 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="pushButton_stopcontainer">
+       <property name="text">
+        <string>Shut down container</string>
+       </property>
+       <property name="icon">
+        <iconset theme="QIcon::ThemeIcon::ApplicationExit"/>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="pushButton_reset">
        <property name="toolTip">
         <string>This will kill all FreeRDP processes started by LinOffice and reboot the Windows VM. Any unsaved documents will be lost.</string>
