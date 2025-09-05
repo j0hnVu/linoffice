@@ -35,6 +35,15 @@ fi
 # Find .desktop files containing linoffice.sh in Exec= line
 if [[ -n "$USER_APPLICATIONS_DIR" ]]; then
   DESKTOP_FILES=$(find "$USER_APPLICATIONS_DIR" -type f -name "*.desktop" -exec grep -l "Exec=.*linoffice.sh" {} \;)
+  # Also include the GUI launcher if present
+  if [[ -f "$USER_APPLICATIONS_DIR/linoffice.desktop" ]]; then
+    if [[ -n "$DESKTOP_FILES" ]]; then
+      DESKTOP_FILES="$DESKTOP_FILES
+$USER_APPLICATIONS_DIR/linoffice.desktop"
+    else
+      DESKTOP_FILES="$USER_APPLICATIONS_DIR/linoffice.desktop"
+    fi
+  fi
   if [[ -n "$DESKTOP_FILES" ]]; then
     echo "The following .desktop files will be deleted:"
     echo "$DESKTOP_FILES"
@@ -51,6 +60,147 @@ if [[ -n "$USER_APPLICATIONS_DIR" ]]; then
   fi
 fi
 
+# Dependency cleanup based on installed_dependencies recorded by quickstart.sh
+# This will attempt to remove venv, pip-installed packages, Flatpak apps, and
+# system packages installed by the quickstart script, with confirmations.
+
+# Resolve the installed_dependencies file path
+INSTALLED_DEPS_FILE=""
+DEFAULT_APPDATA_PATH="$HOME/.local/share/linoffice"
+if [[ -n "$APPDATA_PATH" && -f "$APPDATA_PATH/installed_dependencies" ]]; then
+  INSTALLED_DEPS_FILE="$APPDATA_PATH/installed_dependencies"
+elif [[ -f "$DEFAULT_APPDATA_PATH/installed_dependencies" ]]; then
+  INSTALLED_DEPS_FILE="$DEFAULT_APPDATA_PATH/installed_dependencies"
+fi
+
+if [[ -n "$INSTALLED_DEPS_FILE" ]]; then
+  echo "Checking which packages were installed by the LinOffice Quickstart script..."
+
+  # Extract key values
+  PM_LINE=$(grep -E '^(apt|dnf|yum|zypper|pacman|xbps-install|eopkg|urpmi)=' "$INSTALLED_DEPS_FILE" || true)
+  FLATPAK_LINE=$(grep -E '^flatpak=' "$INSTALLED_DEPS_FILE" | sed -E 's/^flatpak=//; s/^"//; s/"$//' || true)
+  PIP_LINE=$(grep -E '^pip=' "$INSTALLED_DEPS_FILE" | sed -E 's/^pip=//; s/^"//; s/"$//' || true)
+  FLATPAK_USER=$(grep -E '^flatpak_user=' "$INSTALLED_DEPS_FILE" | tail -n1 | cut -d= -f2 2>/dev/null || echo 0)
+  PIP_VENV=$(grep -E '^pip_venv=' "$INSTALLED_DEPS_FILE" | tail -n1 | cut -d= -f2 2>/dev/null || echo 0)
+
+  # Clean up virtual environment if used
+  if [[ "$PIP_VENV" == "1" ]]; then
+    VENV_DIR="$HOME/.local/bin/linoffice/venv"
+    if [[ -d "$VENV_DIR" ]]; then
+      read -p "A Python virtual environment was used at $VENV_DIR. Delete it? (y/n): " confirm
+      if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+        rm -rf "$VENV_DIR"
+        echo "Deleted virtual environment: $VENV_DIR"
+      else
+        echo "Virtual environment deletion skipped."
+      fi
+    fi
+  fi
+
+  # Uninstall pip packages installed by quickstart (user-site packages)
+  if [[ -n "$PIP_LINE" ]]; then
+    echo "The following Python packages were installed by the LinOffice Quickstart script:"
+    echo "$PIP_LINE"
+    echo "They will be uninstalled using pip. Other applications might depend on them."
+    read -p "Proceed to uninstall these pip packages? (y/n): " confirm
+    if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+      # Prefer pip3 if available
+      if command -v pip3 >/dev/null 2>&1; then
+        pip3 uninstall --break-system-packages -y $PIP_LINE || true
+      elif command -v pip >/dev/null 2>&1; then
+        pip uninstall --break-system-packages -y $PIP_LINE || true
+      else
+        echo "Warning: pip is not available; cannot uninstall pip packages."
+      fi
+    else
+      echo "pip package uninstallation skipped."
+    fi
+  fi
+
+  # Uninstall Flatpak apps (e.g., FreeRDP) and their unused dependencies
+  if [[ -n "$FLATPAK_LINE" ]]; then
+    if command -v flatpak >/dev/null 2>&1; then
+      echo "The following Flatpak packages were installed by the LinOffice Quickstart script:"
+      echo "$FLATPAK_LINE"
+      USER_FLAG=""
+      if [[ "$FLATPAK_USER" == "1" ]]; then
+        USER_FLAG="--user"
+      fi
+      read -p "Proceed to uninstall these Flatpak packages ($USER_FLAG)? (y/n): " confirm
+      if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+        for ref in $FLATPAK_LINE; do
+          flatpak uninstall -y $USER_FLAG "$ref" || true
+        done
+        # Also remove unused runtimes pulled in as dependencies
+        flatpak uninstall -y $USER_FLAG --unused || true
+      else
+        echo "Flatpak uninstallation skipped."
+      fi
+    else
+      echo "Warning: flatpak command not found; skipping Flatpak cleanup."
+    fi
+  fi
+
+  # Remove system packages installed by quickstart via the detected package manager
+  if [[ -n "$PM_LINE" ]]; then
+    PM_KEY=${PM_LINE%%=*}
+    PM_PKGS_RAW=$(echo "$PM_LINE" | sed -E 's/^[^=]+=//; s/^"//; s/"$//')
+
+    if [[ -n "$PM_PKGS_RAW" ]]; then
+      echo "The following system packages were installed by the LinOffice Quickstart script:"
+      echo "$PM_PKGS_RAW"
+      echo "Removing them may affect other applications that depend on them."
+
+      # Ask per-package confirmation, accumulate selections
+      SELECTED_PKGS=()
+      for pkg in $PM_PKGS_RAW; do
+        read -p "Remove system package '$pkg'? (y/n): " ans
+        if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
+          SELECTED_PKGS+=("$pkg")
+        fi
+      done
+
+      if [[ ${#SELECTED_PKGS[@]} -gt 0 ]]; then
+        echo "Removing selected packages via $PM_KEY: ${SELECTED_PKGS[*]}"
+        case "$PM_KEY" in
+          apt)
+            sudo apt-get purge -y "${SELECTED_PKGS[@]}" || true
+            sudo apt-get autoremove -y || true
+            ;;
+          dnf)
+            sudo dnf remove -y "${SELECTED_PKGS[@]}" || true
+            ;;
+          yum)
+            sudo yum remove -y "${SELECTED_PKGS[@]}" || true
+            ;;
+          zypper)
+            sudo zypper --non-interactive remove --clean-deps "${SELECTED_PKGS[@]}" || true
+            ;;
+          pacman)
+            sudo pacman -Rs --noconfirm "${SELECTED_PKGS[@]}" || true
+            ;;
+          xbps-install)
+            sudo xbps-remove -R "${SELECTED_PKGS[@]}" || true
+            ;;
+          eopkg)
+            sudo eopkg remove -y "${SELECTED_PKGS[@]}" || true
+            ;;
+          urpmi)
+            sudo urpme "${SELECTED_PKGS[@]}" || true
+            ;;
+          *)
+            echo "Unknown package manager key: $PM_KEY"
+            ;;
+        esac
+      else
+        echo "No system packages selected for removal."
+      fi
+    fi
+  fi
+else
+  echo "No installed_dependencies record found. Skipping dependency cleanup."
+fi
+
 # Ask to delete the Windows container and its data
 read -p "Do you want to delete the Windows container and all its data as well? (y/n): " confirm
 if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
@@ -58,11 +208,7 @@ if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
     echo "Error: Podman is not installed or not accessible."
   else
     # Stop and remove the LinOffice container
-    if ! podman stop LinOffice &> /dev/null; then
-      echo "Error: Could not stop the LinOffice container. It may not exist."
-    else
-      echo "Stopped LinOffice container."
-    fi
+    "$SCRIPT_DIR/linoffice.sh" --stopcontainer
 
     if ! podman rm -f LinOffice &> /dev/null; then
       echo "Error: Could not delete the LinOffice container."

@@ -11,6 +11,13 @@ GITHUB_API_URL="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases
 
 LINOFFICE_SCRIPT="$TARGET_DIR/gui/linoffice.py"
 
+APPDATA_DIR="$HOME/.local/share/linoffice"
+INSTALLED_PM_PACKAGES=()
+INSTALLED_FLATPAKS=()
+INSTALLED_PIP_PACKAGES=()
+FLATPAK_USER=0
+PIP_VENV=0
+
 # Virtual environment support
 USE_VENV=0
 VENV_PATH=""
@@ -145,6 +152,7 @@ check_immutable_dependencies() {
 # Generic install function
 install_pkg() {
   local pkg="$1"
+  local rc=1
   case "$PKG_MGR" in
     apt)
       if [ "$APT_UPDATED" -eq 0 ]; then
@@ -152,30 +160,41 @@ install_pkg() {
         APT_UPDATED=1
       fi
       sudo apt-get install -y "$pkg"
+      rc=$?
       ;;
     dnf|yum)
       sudo "$PKG_MGR" install -y "$pkg"
+      rc=$?
       ;;
     zypper)
       sudo zypper --non-interactive install "$pkg"
+      rc=$?
       ;;
     pacman)
       sudo pacman -Syu --noconfirm "$pkg"
+      rc=$?
       ;;
     xbps-install)
       sudo xbps-install -Sy "$pkg"
+      rc=$?
       ;;
     eopkg)
       sudo eopkg install -y "$pkg"
+      rc=$?
       ;;
     urpmi)
       sudo urpmi --auto "$pkg"
+      rc=$?
       ;;
     *)
       echo "Unknown package manager: $PKG_MGR"
-      exit 1
+      return 1
       ;;
   esac
+  if [ $rc -eq 0 ]; then
+    INSTALLED_PM_PACKAGES+=("$pkg")
+  fi
+  return $rc
 }
 
 # Try list of possible package names
@@ -202,6 +221,27 @@ ensure_pip() {
   fi
 }
 
+# Detect available pip command (prefer pip3)
+get_pip_cmd() {
+  if command -v pip3 >/dev/null 2>&1; then
+    echo pip3
+  elif command -v pip >/dev/null 2>&1; then
+    echo pip
+  else
+    echo ""  # none
+  fi
+}
+
+# Check if python-dotenv is installed in the current environment
+is_python_dotenv_installed() {
+  local pip_cmd
+  pip_cmd=$(get_pip_cmd)
+  if [ -n "$pip_cmd" ] && "$pip_cmd" show python-dotenv >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
 freerdp_version_ok() {
   if command -v xfreerdp >/dev/null 2>&1; then
     ver=$(xfreerdp --version | grep -oP '\d+\.\d+\.\d+' | head -n1)
@@ -224,6 +264,8 @@ install_freerdp_flatpak() {
   fi
 
   flatpak install -y --user flathub com.freerdp.FreeRDP
+  INSTALLED_FLATPAKS+=("com.freerdp.FreeRDP")
+  FLATPAK_USER=1
 }
 
 # Virtual environment setup function
@@ -347,14 +389,23 @@ dependencies_main() {
       if [ "$NEED_PODMAN_COMPOSE_PIP" = true ]; then
         echo "Installing podman-compose via pip in virtual environment"
         ensure_pip
+        pre_has_dotenv=0
+        if is_python_dotenv_installed; then pre_has_dotenv=1; fi
         pip3 install --user podman-compose || pip install --user podman-compose
+        INSTALLED_PIP_PACKAGES+=("podman-compose")
+        PIP_VENV=1
         export PATH="$HOME/.local/bin:$PATH"
+        if [ $pre_has_dotenv -eq 0 ] && is_python_dotenv_installed; then
+          INSTALLED_PIP_PACKAGES+=("python-dotenv")
+        fi
       fi
       
       if [ "$NEED_PYSIDE6_PIP" = true ]; then
         echo "Installing PySide6 via pip in virtual environment"
         ensure_pip
         pip3 install --user PySide6 || pip install --user PySide6
+        INSTALLED_PIP_PACKAGES+=("PySide6")
+        PIP_VENV=1
       fi
       
       deactivate
@@ -364,14 +415,21 @@ dependencies_main() {
       if [ "$NEED_PODMAN_COMPOSE_PIP" = true ]; then
         echo "Installing podman-compose via pip with --break-system-packages"
         ensure_pip
+        pre_has_dotenv=0
+        if is_python_dotenv_installed; then pre_has_dotenv=1; fi
         pip3 install --user --break-system-packages podman-compose || pip install --user --break-system-packages podman-compose
+        INSTALLED_PIP_PACKAGES+=("podman-compose")
         export PATH="$HOME/.local/bin:$PATH"
+        if [ $pre_has_dotenv -eq 0 ] && is_python_dotenv_installed; then
+          INSTALLED_PIP_PACKAGES+=("python-dotenv")
+        fi
       fi
       
       if [ "$NEED_PYSIDE6_PIP" = true ]; then
         echo "Installing PySide6 via pip with --break-system-packages"
         ensure_pip
         pip3 install --user --break-system-packages PySide6 || pip install --user --break-system-packages PySide6
+        INSTALLED_PIP_PACKAGES+=("PySide6")
         
         # Verify PySide6 installation
         if ! python3 -c "import PySide6" 2>/dev/null; then
@@ -387,6 +445,87 @@ dependencies_main() {
   fi
 
   echo "✅ All dependencies installed successfully!"
+
+  # Write installed dependencies summary
+  mkdir -p "$APPDATA_DIR"
+  SUMMARY_FILE="$APPDATA_DIR/installed_dependencies"
+  PM_KEY="$PKG_MGR"
+
+  pm_list="${INSTALLED_PM_PACKAGES[*]:-}"
+  flatpak_list="${INSTALLED_FLATPAKS[*]:-}"
+  pip_list="${INSTALLED_PIP_PACKAGES[*]:-}"
+
+  # Merge with existing summary if present
+  existing_pm_key=""
+  existing_pm_vals=""
+  existing_flatpak_vals=""
+  existing_pip_vals=""
+  existing_flatpak_user=0
+  existing_pip_venv=0
+
+  if [ -f "$SUMMARY_FILE" ]; then
+    existing_pm_key=$(grep -E '^(apt|dnf|yum|zypper|pacman|xbps-install|eopkg|urpmi)=' "$SUMMARY_FILE" | head -n1 | cut -d= -f1 || true)
+    if [ -n "${existing_pm_key}" ]; then
+      existing_pm_vals=$(grep -E "^${existing_pm_key}=" "$SUMMARY_FILE" | sed -E 's/^[^=]+=//; s/^"//; s/"$//' || true)
+    fi
+    existing_flatpak_vals=$(grep -E '^flatpak=' "$SUMMARY_FILE" | sed -E 's/^flatpak=//; s/^"//; s/"$//' || true)
+    existing_pip_vals=$(grep -E '^pip=' "$SUMMARY_FILE" | sed -E 's/^pip=//; s/^"//; s/"$//' || true)
+    existing_flatpak_user=$(grep -E '^flatpak_user=' "$SUMMARY_FILE" | tail -n1 | cut -d= -f2 || echo 0)
+    existing_pip_venv=$(grep -E '^pip_venv=' "$SUMMARY_FILE" | tail -n1 | cut -d= -f2 || echo 0)
+  fi
+
+  # Determine the key to use for package-manager line
+  pm_key_to_write="${existing_pm_key:-$PM_KEY}"
+
+  # Build unique merged lists
+  combined_pm=""
+  combined_flatpak=""
+  combined_pip=""
+
+  declare -A __seen_pm __seen_flatpak __seen_pip
+
+  for item in $existing_pm_vals $pm_list; do
+    [ -n "$item" ] || continue
+    if [ -z "${__seen_pm[$item]+x}" ]; then
+      combined_pm+="${combined_pm:+ }$item"
+      __seen_pm[$item]=1
+    fi
+  done
+
+  for item in $existing_flatpak_vals $flatpak_list; do
+    [ -n "$item" ] || continue
+    if [ -z "${__seen_flatpak[$item]+x}" ]; then
+      combined_flatpak+="${combined_flatpak:+ }$item"
+      __seen_flatpak[$item]=1
+    fi
+  done
+
+  for item in $existing_pip_vals $pip_list; do
+    [ -n "$item" ] || continue
+    if [ -z "${__seen_pip[$item]+x}" ]; then
+      combined_pip+="${combined_pip:+ }$item"
+      __seen_pip[$item]=1
+    fi
+  done
+
+  # Flags accumulate across runs (logical OR)
+  final_flatpak_user=0
+  if [ "${existing_flatpak_user}" = "1" ] || [ "${FLATPAK_USER}" = "1" ]; then
+    final_flatpak_user=1
+  fi
+  final_pip_venv=0
+  if [ "${existing_pip_venv}" = "1" ] || [ "${PIP_VENV}" = "1" ]; then
+    final_pip_venv=1
+  fi
+
+  {
+    echo "Dependencies installed by quickstart.sh:"
+    echo "${pm_key_to_write}=\"${combined_pm}\""
+    echo "flatpak=\"${combined_flatpak}\""
+    echo "pip=\"${combined_pip}\""
+    echo "flatpak_user=${final_flatpak_user}"
+    echo "pip_venv=${final_pip_venv}"
+  } > "$SUMMARY_FILE"
 }
 
 
