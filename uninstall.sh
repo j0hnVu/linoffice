@@ -19,18 +19,24 @@ else
   fi
 fi
 
-# Check if APPDATA_PATH exists and delete if it does
-if [[ -d "$APPDATA_PATH" ]]; then
-  read -p "Do you want to delete the app data in $APPDATA_PATH? (y/n): " confirm
-  if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
-    rm -r "$APPDATA_PATH"
-    echo "Deleted directory: $APPDATA_PATH"
-  else
-    echo "Deletion of $APPDATA_PATH aborted."
+
+# Check if sudo is available
+check_sudo() {
+  if ! command -v sudo >/dev/null 2>&1; then
+    return 1
   fi
-else
-  echo "Warning: Directory $APPDATA_PATH does not exist."
-fi
+  return 0
+}
+
+# Function to show manual uninstall instructions
+show_manual_uninstall() {
+  local packages=("$@")
+  echo -e "\033[1;31mIt seems that sudo is not available on your system. The script cannot remove these packages:\033[0m"
+  echo -e "\033[1;31m${packages[*]}\033[0m"
+  echo -e "\033[1;31mPlease uninstall them manually.\033[0m"
+  echo ""
+  echo "Please run as root (su) and remove the packages manually."
+}
 
 # Find .desktop files containing linoffice.sh in Exec= line
 if [[ -n "$USER_APPLICATIONS_DIR" ]]; then
@@ -161,37 +167,42 @@ if [[ -n "$INSTALLED_DEPS_FILE" ]]; then
       done
 
       if [[ ${#SELECTED_PKGS[@]} -gt 0 ]]; then
-        echo "Removing selected packages via $PM_KEY: ${SELECTED_PKGS[*]}"
-        case "$PM_KEY" in
-          apt)
-            sudo apt-get purge -y "${SELECTED_PKGS[@]}" || true
-            sudo apt-get autoremove -y || true
-            ;;
-          dnf)
-            sudo dnf remove -y "${SELECTED_PKGS[@]}" || true
-            ;;
-          yum)
-            sudo yum remove -y "${SELECTED_PKGS[@]}" || true
-            ;;
-          zypper)
-            sudo zypper --non-interactive remove --clean-deps "${SELECTED_PKGS[@]}" || true
-            ;;
-          pacman)
-            sudo pacman -Rs --noconfirm "${SELECTED_PKGS[@]}" || true
-            ;;
-          xbps-install)
-            sudo xbps-remove -R "${SELECTED_PKGS[@]}" || true
-            ;;
-          eopkg)
-            sudo eopkg remove -y "${SELECTED_PKGS[@]}" || true
-            ;;
-          urpmi)
-            sudo urpme "${SELECTED_PKGS[@]}" || true
-            ;;
-          *)
-            echo "Unknown package manager key: $PM_KEY"
-            ;;
-        esac
+        # Check if sudo is available
+        if ! check_sudo; then
+          show_manual_uninstall "${SELECTED_PKGS[@]}"
+        else 
+          echo "Removing selected packages via $PM_KEY: ${SELECTED_PKGS[*]}"
+          case "$PM_KEY" in
+            apt)
+              sudo apt-get purge -y "${SELECTED_PKGS[@]}" || true
+              sudo apt-get autoremove -y || true
+              ;;
+            dnf)
+              sudo dnf remove -y "${SELECTED_PKGS[@]}" || true
+              ;;
+            yum)
+              sudo yum remove -y "${SELECTED_PKGS[@]}" || true
+              ;;
+            zypper)
+              sudo zypper --non-interactive remove --clean-deps "${SELECTED_PKGS[@]}" || true
+              ;;
+            pacman)
+              sudo pacman -Rs --noconfirm "${SELECTED_PKGS[@]}" || true
+              ;;
+            xbps-install)
+              sudo xbps-remove -R "${SELECTED_PKGS[@]}" || true
+              ;;
+            eopkg)
+              sudo eopkg remove -y "${SELECTED_PKGS[@]}" || true
+              ;;
+            urpmi)
+              sudo urpme "${SELECTED_PKGS[@]}" || true
+              ;;
+            *)
+              echo "Unknown package manager key: $PM_KEY"
+              ;;
+          esac
+        fi
       else
         echo "No system packages selected for removal."
       fi
@@ -225,6 +236,19 @@ if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
   fi
 else
   echo "Windows container and data deletion aborted."
+fi
+
+# Check if APPDATA_PATH exists and delete if it does
+if [[ -d "$APPDATA_PATH" ]]; then
+  read -p "Do you want to delete the app data in $APPDATA_PATH? (y/n): " confirm
+  if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+    rm -r "$APPDATA_PATH"
+    echo "Deleted directory: $APPDATA_PATH"
+  else
+    echo "Deletion of $APPDATA_PATH aborted."
+  fi
+else
+  echo "Warning: Directory $APPDATA_PATH does not exist."
 fi
 
 # Find all files and folders in the same directory as uninstall.sh (excluding itself)

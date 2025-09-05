@@ -153,6 +153,12 @@ check_immutable_dependencies() {
 install_pkg() {
   local pkg="$1"
   local rc=1
+
+  # Check if sudo is available
+  if ! check_sudo; then
+    show_manual_install "$pkg"
+  fi
+
   case "$PKG_MGR" in
     apt)
       if [ "$APT_UPDATED" -eq 0 ]; then
@@ -210,6 +216,22 @@ try_install_any() {
 # Command check
 pkg_exists() {
   command -v "$1" >/dev/null 2>&1
+}
+
+# Check if sudo is available
+check_sudo() {
+  if ! command -v sudo >/dev/null 2>&1; then
+    return 1
+  fi
+  return 0
+}
+
+# Function to show manual installation instructions
+show_manual_install() {
+  local packages=("$@")
+  echo -e "\033[1;31mIt seems that sudo is not available on your system. Please manually install these packages:\033[0m"
+  echo -e "\033[1;31m${packages[*]}\033[0m"
+  exit 1
 }
 
 ensure_pip() {
