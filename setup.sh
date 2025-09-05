@@ -86,11 +86,11 @@ use_venv() {
     PYTHON_PATH="$venv_dir/bin/python3"
 
     USER_SITE_PATH=$($PYTHON_PATH -m site | grep USER_SITE | awk -F"'" '{print $2}')
-    PODMAN_BIN=$USER_SITE_PATH/podman_compose.py
+    PODMAN_COMPOSE_BIN=$USER_SITE_PATH/podman_compose.py
 
-    if [[ -f "$PODMAN_BIN" ]]; then
+    if [[ -f "$PODMAN_COMPOSE_BIN" ]]; then
         echo "using podman-compose from venv"
-        COMPOSE_COMMAND="$PYTHON_PATH $PODMAN_BIN"
+        COMPOSE_COMMAND="$PYTHON_PATH $PODMAN_COMPOSE_BIN"
     fi
 
     return 0
@@ -175,6 +175,17 @@ function clear_progress() {
     fi
 }
 
+function check_linoffice_container() {
+    print_info "Checking if LinOffice container exists already"
+    if podman container exists "$CONTAINER_NAME"; then
+        print_info "Container exists already."
+        CONTAINER_EXISTS=1
+    else
+        print_info "Container does not yet exist."
+        CONTAINER_EXISTS=0
+    fi
+}
+
 # Function to detect and set the FreeRDP command
 function detect_freerdp_command() {
     # Set FREERDP_COMMAND to the first available FreeRDP command (xfreerdp, xfreerdp3, or flatpak)
@@ -215,14 +226,19 @@ function check_requirements() {
     print_success "Sufficient RAM detected: ${AVAILABLE_RAM}GB"
 
     # Check minimum free storage (64 GB)
-    print_info "Checking minimum free storage"
-    REQUIRED_STORAGE=64
-    AVAILABLE_STORAGE=$(df -B1G --output=avail /home | tail -n 1 | awk '{print $1}')
-    if [ "$AVAILABLE_STORAGE" -lt "$REQUIRED_STORAGE" ]; then
-        exit_with_error "Insufficient free storage. Required: ${REQUIRED_STORAGE}GB, Available: ${AVAILABLE_STORAGE}GB \
-    Please free up disk space or use a different storage device."
+    check_linoffice_container
+    if [ "$CONTAINER_EXISTS" -eq 1 ]; then
+        print_info "Container exists already. Skipping check if sufficient free storage is available."
+    else        
+        print_info "Checking minimum free storage"
+        REQUIRED_STORAGE=64
+        AVAILABLE_STORAGE=$(df -B1G --output=avail /home | tail -n 1 | awk '{print $1}')
+        if [ "$AVAILABLE_STORAGE" -lt "$REQUIRED_STORAGE" ]; then
+            exit_with_error "Insufficient free storage. Required: ${REQUIRED_STORAGE}GB, Available: ${AVAILABLE_STORAGE}GB \
+        Please free up disk space or use a different storage device."
+        fi
+        print_success "Sufficient free storage detected: ${AVAILABLE_STORAGE}GB"
     fi
-    print_success "Sufficient free storage detected: ${AVAILABLE_STORAGE}GB"
 
     # Check if computer supports virtualization
     print_info "Checking virtualization support"
@@ -285,9 +301,17 @@ function check_requirements() {
 
     # Check if podman-compose is installed
     print_info "Checking if podman-compose is installed"
+    echo "Check if Python is using virtual enviroment: $USE_VENV"
 
     if [[ "$USE_VENV" -eq 0 ]]; then
-        if ! command -v podman-compose &> /dev/null; then
+        # Use system podman-compose, not the one in ~/.local/bin which might be broken
+        if [[ -x "/usr/bin/podman-compose" ]]; then
+            COMPOSE_COMMAND="/usr/bin/podman-compose"
+            print_success "Using system podman-compose: /usr/bin/podman-compose"
+        elif command -v podman-compose &> /dev/null; then
+            COMPOSE_COMMAND="podman-compose"
+            print_success "Using podman-compose from PATH: $(command -v podman-compose)"
+        else
             exit_with_error "podman-compose is not installed.
 
         HOW TO FIX:
@@ -314,6 +338,17 @@ function check_requirements() {
         OpenSUSE: sudo zypper install python-python-dotenv
         Arch Linux: sudo pacman -S python-dotenv"
 
+        fi
+    else
+        # When using virtual environment, check if podman-compose is installed in venv
+        if [[ -f "$PODMAN_COMPOSE_BIN" ]]; then
+            print_success "podman-compose is installed in virtual environment."
+        else
+            exit_with_error "podman-compose is not installed in virtual environment.
+
+        HOW TO FIX:
+        The virtual environment needs podman-compose installed.
+        Run: $PYTHON_PATH -m pip install podman-compose"
         fi
     fi
 
@@ -522,12 +557,13 @@ function check_requirements() {
 
     # Check that network directory exists
     if [ ! -d "$NETWORK_DIR" ]; then
-        exit_with_error "Network directory does not exist: $NETWORK_DIR"
+        print_info "WARNING: Network directory does not exist: $NETWORK_DIR
+        This might lead to errors."
     fi
     if [ ! -w "$NETWORK_DIR" ]; then
-        exit_with_error "Network directory not writable: $NETWORK_DIR"
+        print_info "WARNING: Network directory not writable: $NETWORK_DIR
+        This might lead to errors."
     fi
-    print_success "Netavark configuration verified."
     
     # Clean up test network
     if podman network exists "$TEST_NET_NAME" >/dev/null 2>&1; then
@@ -592,17 +628,6 @@ function check_requirements() {
     fi
 
     print_success "Found regional_settings.reg file"
-}
-
-function check_linoffice_container() {
-    print_info "Checking if LinOffice container exists already"
-    if podman container exists "$CONTAINER_NAME"; then
-        print_info "Container exists already."
-        CONTAINER_EXISTS=1
-    else
-        print_info "Container does not yet exist."
-        CONTAINER_EXISTS=0
-    fi
 }
 
 function setup_logfile() {
