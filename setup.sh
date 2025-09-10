@@ -77,25 +77,43 @@ use_venv() {
   local venv_dir="$HOME/.local/bin/linoffice/venv"
   local activate_script="$venv_dir/bin/activate"
 
+  print_info "Checking for virtual environment at: $venv_dir"
+  
   if [[ -f "$activate_script" ]]; then
-    echo "Using virtual environment at $venv_dir"
+    print_info "Virtual environment found at $venv_dir"
     source "$activate_script"
     VENV_PATH="$venv_dir"
     USE_VENV=1
 
     PYTHON_PATH="$venv_dir/bin/python3"
+    print_info "Virtual environment Python: $PYTHON_PATH"
 
     USER_SITE_PATH=$($PYTHON_PATH -m site | grep USER_SITE | awk -F"'" '{print $2}')
     PODMAN_COMPOSE_BIN=$USER_SITE_PATH/podman_compose.py
 
     if [[ -f "$PODMAN_COMPOSE_BIN" ]]; then
-        echo "using podman-compose from venv"
+        print_info "Using podman-compose from virtual environment: $PODMAN_COMPOSE_BIN"
         COMPOSE_COMMAND="$PYTHON_PATH $PODMAN_COMPOSE_BIN"
+        return 0
+    else
+        print_info "podman-compose not found in virtual environment user packages at: $PODMAN_COMPOSE_BIN"
+        print_info "Checking if virtual environment can access system podman-compose..."
+        
+        # Check if venv can access system podman-compose (due to --system-site-packages)
+        if command -v podman-compose &> /dev/null; then
+            print_info "Virtual environment can access system podman-compose"
+            COMPOSE_COMMAND="podman-compose"
+            return 0
+        else
+            print_info "podman-compose not available in virtual environment or system"
+            print_info "Will check for system podman-compose instead"
+            # Don't return here - let the system check handle it
+            USE_VENV=0  # Reset to system mode since venv doesn't have podman-compose
+            return 1
+        fi
     fi
-
-    return 0
   else
-    echo "Virtual environment not found at $venv_dir"
+    print_info "Virtual environment not found at $venv_dir, using system Python"
     return 1
   fi
 }
@@ -301,7 +319,16 @@ function check_requirements() {
 
     # Check if podman-compose is installed
     print_info "Checking if podman-compose is installed"
-    echo "Check if Python is using virtual enviroment: $USE_VENV"
+    print_info "Python environment: $(if [[ "$USE_VENV" -eq 1 ]]; then echo "Virtual environment at $VENV_PATH"; else echo "System Python"; fi)"
+
+    # Determine which Python to use for dependency checks
+    if [[ "$USE_VENV" -eq 1 ]]; then
+        PYTHON_CMD="$PYTHON_PATH"
+        PYTHON_ENV="virtual environment"
+    else
+        PYTHON_CMD="python3"
+        PYTHON_ENV="system"
+    fi
 
     if [[ "$USE_VENV" -eq 0 ]]; then
         # Use system podman-compose, not the one in ~/.local/bin which might be broken
@@ -325,18 +352,36 @@ function check_requirements() {
         Or visit: https://github.com/containers/podman-compose"
         fi
         # Check if python-dotenv is installed (dependency of podman-compose)
-        if python3 -c "import dotenv" >/dev/null 2>&1; then
-            print_success "python-dotenv is installed."
+        if ! command -v $PYTHON_CMD &> /dev/null; then
+            exit_with_error "$PYTHON_CMD command not found. Please install Python 3."
+        fi
+        
+        # Show which Python is being used for debugging
+        PYTHON_FULL_PATH=$(command -v $PYTHON_CMD)
+        print_info "Using $PYTHON_ENV Python: $PYTHON_FULL_PATH"
+        
+        if $PYTHON_CMD -c "import dotenv" >/dev/null 2>&1; then
+            print_success "python-dotenv is installed in $PYTHON_ENV environment."
         else
-            exit_with_error "python-dotenv is not installed.
+            # Provide more detailed error information
+            print_error "python-dotenv is not installed or not accessible to $PYTHON_FULL_PATH"
+            print_info "Python version: $($PYTHON_CMD --version 2>&1)"
+            print_info "Python path: $PYTHON_FULL_PATH"
+            print_info "Available packages: $($PYTHON_CMD -m pip list 2>/dev/null | grep -i dotenv || echo 'No dotenv packages found')"
+            
+            exit_with_error "python-dotenv is not installed in $PYTHON_ENV environment.
 
         HOW TO FIX:
-        Using pip: pip install python-dotenv
+        Using pip: $PYTHON_CMD -m pip install python-dotenv
         If you don't have pip, you can install it with your package manager.
         Ubuntu/Debian: sudo apt install python-dotenv
         Fedora: sudo dnf install python-dotenv
         OpenSUSE: sudo zypper install python-python-dotenv
-        Arch Linux: sudo pacman -S python-dotenv"
+        Arch Linux: sudo pacman -S python-dotenv
+        
+        If the package is installed but not detected, try:
+        - Check if you have multiple Python versions: which python3
+        - Install for the specific Python: $PYTHON_FULL_PATH -m pip install python-dotenv"
 
         fi
     else
@@ -349,6 +394,33 @@ function check_requirements() {
         HOW TO FIX:
         The virtual environment needs podman-compose installed.
         Run: $PYTHON_PATH -m pip install podman-compose"
+        fi
+        
+        # Check if python-dotenv is installed in virtual environment (dependency of podman-compose)
+        if $PYTHON_CMD -c "import dotenv" >/dev/null 2>&1; then
+            print_success "python-dotenv is installed in virtual environment."
+        else
+            print_error "python-dotenv is not installed in virtual environment."
+            print_info "Python version: $($PYTHON_CMD --version 2>&1)"
+            print_info "Python path: $PYTHON_CMD"
+            print_info "Available packages: $($PYTHON_CMD -m pip list 2>/dev/null | grep -i dotenv || echo 'No dotenv packages found')"
+            print_info "User site packages: $($PYTHON_CMD -m site --user-site 2>/dev/null || echo 'Unknown')"
+            
+            # Check if it's available in user packages (installed with --user flag)
+            USER_SITE_PACKAGES=$($PYTHON_CMD -m site --user-site 2>/dev/null)
+            if [[ -n "$USER_SITE_PACKAGES" ]] && [[ -d "$USER_SITE_PACKAGES" ]] && find "$USER_SITE_PACKAGES" -name "*dotenv*" -type d 2>/dev/null | grep -q .; then
+                print_info "python-dotenv found in user site packages but not importable"
+                print_info "This might be due to virtual environment configuration issues"
+            fi
+            
+            exit_with_error "python-dotenv is not installed in virtual environment.
+
+        HOW TO FIX:
+        The virtual environment needs python-dotenv installed.
+        Run: $PYTHON_CMD -m pip install python-dotenv
+        
+        If packages were installed with --user flag by quickstart.sh, try:
+        $PYTHON_CMD -m pip install --user python-dotenv"
         fi
     fi
 
