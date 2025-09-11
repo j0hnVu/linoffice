@@ -192,6 +192,12 @@ If you are using the terminal commands often, you might want to create an alias 
 - `linoffice stopcontainer`: stops and then removes the podman container (but not its data) and cleans up all associated resources
 - `linoffice cleanup [--full|--reset]`: cleans up Office lock files (such as ~$file.xlsx) in the home folder and removable media; `--full` cleans all files regardless of creation date, `--reset` resets the last cleanup timestamp
 
+The setup script (`setup.sh`) has these CLI options:
+- `./setup.sh --desktop`: Only (re)create the .desktop files (app launchers)
+- `./setup.sh --firstrun`: Force RDP and Office installation checks (can be used after the Windows VM has finished installation)
+- `./setup.sh --installoffice`: Only run the Office installation script script (in case the Windows installation has finished but Office is not installed)
+- `./setup.sh --healthcheck`: Check that the system requirements are met and dependencies are installed and the container is healthy (there is also a button for this in the GUI)
+
 ### Office activation 
 
 You will need an Office 2024 license key or Office 365 subscription to use Office. During the first 5 days after installation, you can use Office without activation by clicking on "I have a product key" and then on the "X" of the window where you are supposed to enter your product key.
@@ -203,16 +209,32 @@ The **Microsoft Activation Scripts (MAS)** will also work if you have, let's say
 
 ### Problems with the setup
 
-If the setup fails, try running it a second time. Sometimes that does the trick.
-If your Windows VM installs successfully but Office doesn't seem to be installed, you can trigger a re-installation of Office using `/.setup.sh --installoffice`. You can also manually install Office by accessing your virtual machine through `127.0.0.1:8006` in the browser.
-If you have installed Office but it wasn't picked up by the setup script, you can let it check for Office again by running `./setup.sh --firstrun`.
-If you need to re-create the .desktop files (app launchers) you can do it by running `./setup.sh --desktop` (or the equivalent button in the GUI)
-If something breaks later on you can re-run the requirements check with `./setup.sh --healthcheck` (or the equivalent button in the GUI).
+If you have problems with the setup script, such as Office not being found or FreeRDP not connecting, do the following:
 
-If you can't get the setup to work, please [create a bug report ("setup didn't work")](https://github.com/eylenburg/linoffice/issues) with these information:
+1. Access the VM through `127.0.0.1:8006` in the browser (password to log in is `MyWindowsPassword`) and check:
+   [ ] Does the VM run and let you log in? If not, check `windows_install.log` (in `~/.local/share/linoffice`) to see what could have gone wrong.
+   [ ] Is Microsoft Office installed? If not, try to download and install Office manually, then create an empty file (not folder) called `success` in `C:\OEM\`, then sign out (!) of the Windows account using the Start Menu but don't shut down Windows
+2. After this, run `./setup.sh --firstrun` from Linux
+
+If it works now, congratulations.
+
+If you still get an error, test if you can connect to the VM using RDP. 
+1. Make sure you are not still logged in via VNC (i.e. in the browser); if you are, sign out the Windows user account
+2. Check what the correct command for FreeRDP is on your system. This can be `xfreerdp3` or (less likely) `xfreerdp`, or if you have installed it through Flatpak, it would be `flatpak run --command=xfreerdp com.freerdp.FreeRDP`. 
+3. Run this command, but make sure to use the correct FreeRDP command at the beginning: `xfreerdp3 /cert:ignore /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388` --- It should open a window showing the Windows VM. If yes, close the window.
+4. Run this command, but make sure to use the correct FreeRDP command at the beginning: `xfreerdp3 /cert:ignore /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:explorer.exe` --- It should open a window with the Windows File Explorer. If yes, close the window.
+5. Run this command, but make sure to use the correct FreeRDP command at the beginning: `xfreerdp3 /cert:ignore /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:excel.exe` --- It should open a window with Excel. If yes, close the window.
+6. After this, run `./setup.sh --firstrun` from Linux again and hopefully it succeeds now.
+
+If there is still a problem in the setup, even though you have just confirmed that Office is installed and you can launch Office applications from Linux using FreeRDP, do this:
+1. In `~/.local/share/linoffice/` edit the file called `setup_progress.log` and add the line `office_installed` at the end if it doesn't yet exist
+2. Run `./setup.sh --desktop` to create .desktop files (app launchers in Linux)
+   
+Now you should be able to find the "Linoffice" GUI as well as the starters for Word, Excel etc. in your Linux menu.
+
+If you still can't get the setup to work, please [create a bug report ("setup didn't work")](https://github.com/eylenburg/linoffice/issues) with these information:
 - The `windows_install.log` (in `~/.local/share/linoffice`)
-- The `setup.log`, `setup_office.log`, and `setup_rdp.log` (if they exist) in `C:\OEM` in the Windows VM
-  - You can access the VM through via RDP with the command `xfreerdp /cert:ignore /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388` or alternatively by accessing `127.0.0.1:8006` in the browser (password is `MyWindowsPassword`), although the latter method doesn't have clipboard sharing.
+- The `setup.log`, `setup_office.log`, and `setup_rdp.log` (if they exist) in `C:\OEM` in the Windows VM (if you can only access the VM through the browser/VNC, there is no clipboard sharing with Linux, so a screenshot is fine)
 - Your system information (LinOffice version, Linux distribution, desktop environment, Wayland or X11, how did you install podman, podman-compose and freerdp?)
 
 ### Window management
