@@ -212,8 +212,8 @@ The **Microsoft Activation Scripts (MAS)** will also work if you have, let's say
 If you have problems with the setup script, such as Office not being found or FreeRDP not connecting, do the following:
 
 1. Access the VM through `127.0.0.1:8006` in the browser (password to log in is `MyWindowsPassword`) and check:
-   [ ] Does the VM run and let you log in? If not, check `windows_install.log` (in `~/.local/share/linoffice`) to see what could have gone wrong.
-   [ ] Is Microsoft Office installed? If not, try to download and install Office manually, then create an empty file (not folder) called `success` in `C:\OEM\`, then sign out (!) of the Windows account using the Start Menu but don't shut down Windows
+  - [ ] Does the VM run and let you log in? If not, check `windows_install.log` (in `~/.local/share/linoffice`) to see what could have gone wrong.
+  - [ ] Is Microsoft Office installed? If not, try to download and install Office manually, then create an empty file (not folder) called `success` in `C:\OEM\`, then sign out (!) of the Windows account using the Start Menu but don't shut down Windows
 2. After this, run `./setup.sh --firstrun` from Linux
 
 If it works now, congratulations.
