@@ -580,6 +580,16 @@ function waCheckContainerRunning() {
     local TIME_INTERVAL=5
     local MAX_WAIT_TIME=120  # Maximum time to wait for container to be ready
 
+    # If the container does not exist at all, (re)create it
+    if ! podman container exists "$CONTAINER_NAME" 2>/dev/null; then
+        dprint "WINDOWS CONTAINER MISSING. RECREATING."
+        echo -e "Creating Windows container."
+        $COMPOSE_COMMAND --file "$COMPOSE_PATH" up -d &>/dev/null
+        NEEDED_BOOT=true
+        # Give podman a moment to register the container before inspecting
+        sleep 2
+    fi
+
     # Determine the state of the container.
     CONTAINER_STATE=$("$WAFLAVOR" inspect --format='{{.State.Status}}' "$CONTAINER_NAME")
 
@@ -627,7 +637,7 @@ function waCheckContainerRunning() {
             $COMPOSE_COMMAND --file "$COMPOSE_PATH" down &>/dev/null && $COMPOSE_COMMAND --file "$COMPOSE_PATH" up -d &>/dev/null
             NEEDED_BOOT=true
             ;;
-        "unknown")
+        "unknown"|"")
             EXIT_STATUS=$EC_UNKNOWN
             ;;
     esac
@@ -1105,9 +1115,7 @@ if [[ "$1" == "--stopcontainer" ]]; then
         echo "Container is not running."
     fi
 
-    echo "Cleaning up all resources..."
-    # Finally, run 'down' to ensure the stopped container is fully removed.
-    "$COMPOSE_COMMAND" --file "$COMPOSE_PATH" down --remove-orphans &>/dev/null
+    # Do not remove the container; keep it for faster next start
 
     echo "LinOffice has been shut down."
     exit 0

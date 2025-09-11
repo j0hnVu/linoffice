@@ -1,6 +1,8 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_NAME="$(basename "$0")"
+COMPOSE_PATH="$(realpath "${SCRIPT_DIR}/config/compose.yaml")"
+CONTAINER_NAME="LinOffice"
 echo "Executing uninstall script in $SCRIPT_DIR"
 
 # Check if setup.sh exists and extract USER_APPLICATIONS_DIR and APPDATA_PATH
@@ -219,12 +221,51 @@ if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
     echo "Error: Podman is not installed or not accessible."
   else
     # Stop and remove the LinOffice container
-    "$SCRIPT_DIR/linoffice.sh" --stopcontainer
+    # Check the current status of the container
+    CONTAINER_STATUS=$(podman inspect --format='{{.State.Status}}' "$CONTAINER_NAME" 2>/dev/null)
 
-    if ! podman rm -f LinOffice &> /dev/null; then
-      echo "Error: Could not delete the LinOffice container."
+    # Ensure COMPOSE_COMMAND is set to a working value
+    # First try the system podman-compose if it exists and is executable
+    if [[ -x "/usr/bin/podman-compose" ]]; then
+        COMPOSE_COMMAND="/usr/bin/podman-compose"
+    elif command -v podman-compose &>/dev/null; then
+        COMPOSE_COMMAND="podman-compose"
     else
-      echo "Deleted LinOffice container."
+        echo "ERROR: No working podman-compose found"
+    fi
+
+    # If the container is paused, it must be un-paused first to shut down cleanly
+    if [[ "$CONTAINER_STATUS" == "paused" ]]; then
+        echo "Container is paused, unpausing to allow clean shutdown..."
+        if [[ -n "$COMPOSE_COMMAND" ]]; then
+          "$COMPOSE_COMMAND" --file "$COMPOSE_PATH" unpause &>/dev/null
+        else
+          echo "Skipping podman-compose unpause: no podman-compose available."
+        fi
+        sleep 2 # Give it a moment to wake up before stopping
+    fi
+
+    # Now, if the container is running (or was just un-paused), stop it
+    if [[ "$CONTAINER_STATUS" == "running" || "$CONTAINER_STATUS" == "paused" ]]; then
+        echo "Sending stop command... (this may take up to 2 minutes)"
+        podman stop "$CONTAINER_NAME" &>/dev/null
+    else
+        echo "Container is not running."
+    fi
+
+    echo "Cleaning up all resources..."
+    # Finally, run 'down' to ensure the stopped container is fully removed.
+    if [[ -n "$COMPOSE_COMMAND" ]]; then
+      "$COMPOSE_COMMAND" --file "$COMPOSE_PATH" down --remove-orphans &>/dev/null
+    else
+      echo "Skipping podman-compose down: no podman-compose available."
+    fi
+
+    # Finally, delete the container
+    if ! podman rm -f "$CONTAINER_NAME" &> /dev/null; then
+      echo "Error: Could not delete the Podman container."
+    else
+      echo "Deleted "$CONTAINER_NAME" container."
     fi
 
     # Remove the linoffice_data volume

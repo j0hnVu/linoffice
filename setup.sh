@@ -878,7 +878,18 @@ function create_container() {
 function verify_container_health() {
     print_info "Verifying container health..."
     
-    # Check if container is running
+    # Ensure container exists, otherwise create it
+    if ! podman container exists "$CONTAINER_NAME" 2>/dev/null; then
+        print_info "Container does not exist. Creating it now with podman-compose up -d..."
+        if ! $COMPOSE_COMMAND --file "$COMPOSE_FILE" up -d; then
+            print_error "Failed to create container via compose up -d"
+            return 1
+        fi
+        print_info "Waiting for container to boot..."
+        sleep 20
+    fi
+
+    # Check if container is running, otherwise start it
     if ! podman ps -q --filter "name=$CONTAINER_NAME" | grep -q .; then
         print_info "Container is not running. Attempting to start it..."
         if ! $COMPOSE_COMMAND --file "$COMPOSE_FILE" start; then
