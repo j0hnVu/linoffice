@@ -1286,22 +1286,32 @@ run_install_office_ps1() {
     if [ -z "$FREERDP_COMMAND" ]; then
         detect_freerdp_command
     fi
+
     print_info "Running Office installation script via FreeRDP..."
-    local connection_timeout=120
-    # Run FreeRDP command once, no retries
+
+    # Build FreeRDP command wrapper (handles flatpak vs system install)
+    local freerdp_cmd
     if [[ "$FREERDP_COMMAND" == flatpak* ]]; then
-        timeout $connection_timeout bash -c "$FREERDP_COMMAND /cert:ignore +home-drive /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\InstallOffice.ps1'" >>"$LOGFILE" 2>&1
+        freerdp_cmd=(bash -c "$FREERDP_COMMAND")
     else
-        timeout $connection_timeout "$FREERDP_COMMAND" \
-            /cert:ignore \
-            +home-drive \
-            /u:MyWindowsUser \
-            /p:MyWindowsPassword \
-            /v:127.0.0.1 \
-            /port:3388 \
-            /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\InstallOffice.ps1' \
-            >>"$LOGFILE" 2>&1
+        freerdp_cmd=("$FREERDP_COMMAND")
     fi
+
+    # Connection timeout in milliseconds (e.g. 10000 = 10 seconds)
+    local connection_timeout=10000
+
+    # Run FreeRDP with connection timeout only (script keeps running after connect)
+    "${freerdp_cmd[@]}" \
+        /cert:ignore \
+        +home-drive \
+        /u:MyWindowsUser \
+        /p:MyWindowsPassword \
+        /v:127.0.0.1 \
+        /port:3388 \
+        /timeout:$connection_timeout \
+        /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\InstallOffice.ps1' \
+        >>"$LOGFILE" 2>&1
+
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
         print_success "Office installation script executed successfully via FreeRDP."
@@ -1311,6 +1321,7 @@ run_install_office_ps1() {
         return 1
     fi
 }
+
 
 # Main logic
 # If --healthcheck flag is set, only run these tests without writing to progress file
