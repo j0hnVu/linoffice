@@ -50,6 +50,7 @@ REMOVABLE_MEDIA=""
 RDP_SCALE=100
 AUTOPAUSE="on"
 AUTOPAUSE_TIME="300"
+HIDEF="on"
 DEBUG="true"
 CLEANUP_TIME_WINDOW=86400  # Default: 24 hours. Do not delete Office lock files older than 24 hours, to avoid deleting pre-existing files.
 
@@ -812,7 +813,7 @@ function waRunCommand() {
             -wallpaper \
             $RDP_KBD \
             $RDP_FLAGS \
-            /app:program:"$2" \
+            /app:program:"$2",hidef:"$HIDEF" \
             /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
 
         # Capture the process ID.
@@ -932,7 +933,7 @@ function waRunCommand() {
                 $RDP_KBD \
                 $RDP_FLAGS \
                 /wm-class:"$FULL_NAME" \
-                /app:program:"$EXE",icon:"$ICON",name:"$FULL_NAME" \
+                /app:program:"$EXE",hidef:"$HIDEF",icon:"$ICON",name:"$FULL_NAME" \
                 /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
 
             # Capture the process ID.
@@ -964,7 +965,7 @@ function waRunCommand() {
                 $RDP_KBD \
                 $RDP_FLAGS \
                 /wm-class:"$FULL_NAME" \
-                /app:program:"$EXE",icon:"$ICON",name:"$FULL_NAME",cmd:\""$FILE_PATH"\" \
+                /app:program:"$EXE",hidef:"$HIDEF",icon:"$ICON",name:"$FULL_NAME",cmd:\""$FILE_PATH"\" \
                 /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
 
             # Capture the process ID.

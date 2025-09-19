@@ -662,6 +662,12 @@ class TroubleshootingWindow(QMainWindow):
         self.load_ui('troubleshooting.ui')
         self.setWindowTitle(self.ui.windowTitle())
         self.connect_troubleshooting_buttons()
+        # Initialize checkboxes based on current config
+        self._tr_init = True
+        try:
+            self._load_troubleshooting_state()
+        finally:
+            self._tr_init = False
 
     def load_ui(self, ui_file):
         loader = QUiLoader()
@@ -680,6 +686,82 @@ class TroubleshootingWindow(QMainWindow):
         self.ui.pushButton_website.clicked.connect(self.open_website)
         self.ui.pushButton_uninstall.clicked.connect(self.run_uninstall)
         self.ui.pushButton_healthcheck.clicked.connect(self.run_healthcheck)
+        # Connect FreeRDP options
+        self.ui.checkBox_multimon.toggled.connect(self._on_multimon_toggled)
+        self.ui.checkBox_hidef.toggled.connect(self._on_hidef_toggled)
+
+    def _conf_path(self):
+        # Reuse same resolution as in SettingsWindow
+        return os.path.join(os.path.dirname(LINOFFICE_SCRIPT), 'config', 'linoffice.conf')
+
+    def _read_conf(self):
+        path = self._conf_path()
+        if not os.path.exists(path):
+            return ''
+        with open(path, 'r') as f:
+            return f.read()
+
+    def _write_conf(self, content):
+        path = self._conf_path()
+        with open(path, 'w') as f:
+            f.write(content)
+
+    def _load_troubleshooting_state(self):
+        content = self._read_conf()
+        # Multiple Monitors: check if "/multimon" present anywhere
+        self.ui.checkBox_multimon.setChecked('/multimon' in content)
+        # HiDef: check HIDEF value; if missing, uncheck
+        hidef_match = re.search(r'^HIDEF="(on|off)"', content, re.MULTILINE)
+        if hidef_match:
+            self.ui.checkBox_hidef.setChecked(hidef_match.group(1) == 'on')
+        else:
+            self.ui.checkBox_hidef.setChecked(False)
+
+    def _on_multimon_toggled(self, checked):
+        if getattr(self, '_tr_init', False):
+            return
+        content = self._read_conf()
+        if not content:
+            return
+        # Ensure there is an RDP_FLAGS line to modify
+        def add_multimon_to_flags(match):
+            inner = match.group(1)
+            if ' /multimon' not in inner and '/multimon' not in inner:
+                inner = inner + ' /multimon'
+            return f'RDP_FLAGS="{inner}"'
+
+        def remove_multimon_from_flags(match):
+            inner = match.group(1)
+            inner = inner.replace(' /multimon', '')
+            inner = inner.replace('/multimon', '')
+            return f'RDP_FLAGS="{inner}"'
+
+        pattern = r'^RDP_FLAGS="([^"]*)"'
+        if checked:
+            new_content = re.sub(pattern, add_multimon_to_flags, content, count=1, flags=re.MULTILINE)
+        else:
+            new_content = re.sub(pattern, remove_multimon_from_flags, content, count=1, flags=re.MULTILINE)
+        if new_content != content:
+            self._write_conf(new_content)
+
+    def _on_hidef_toggled(self, checked):
+        if getattr(self, '_tr_init', False):
+            return
+        content = self._read_conf()
+        if content == '':
+            return
+        hidef_re = r'^HIDEF="(on|off)"'
+        if re.search(hidef_re, content, flags=re.MULTILINE):
+            new_value = 'on' if checked else 'off'
+            new_content = re.sub(hidef_re, f'HIDEF="{new_value}"', content, flags=re.MULTILINE)
+            if new_content != content:
+                self._write_conf(new_content)
+        else:
+            # Only add when enabling (checked). If disabling and missing, leave as-is.
+            if checked:
+                # Append at end on a new line
+                suffix = '' if content.endswith('\n') else '\n'
+                self._write_conf(content + suffix + 'HIDEF="on"\n')
 
     def run_cleanup_full(self):
         # Start the subprocess and capture the output
