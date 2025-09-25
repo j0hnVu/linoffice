@@ -204,6 +204,13 @@ You will need an Office 2024 license key or Office 365 subscription to use Offic
 
 The **Microsoft Activation Scripts (MAS)** will also work if you have, let's say, trouble with activation - just run `./linoffice.sh manual powershell.exe` from the script's directory to open a Powershell window where you can then paste the command to run MAS. 
 
+### Printing
+
+The Office application are running in a virtual machine with Windows, meaning that the printers you have set up in Linux are not available. There are two options if you need to print from Office:
+
+1. Print to PDF / export to PDF and then print the PDF from Linux
+2. If you have a network printer you can easily install it in Windows. Find out its local IP address (e.g. with `lpstat -v`), then open the Windows VM (e.g. via the Tools menu in LinOffice), then Settings -> Printers and Scanners -> Add Device -> Add a new device manually -> Add printer using IP Address
+
 
 # Troubleshooting
 
