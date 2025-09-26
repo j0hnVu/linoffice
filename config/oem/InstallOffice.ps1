@@ -17,7 +17,14 @@ Write-Log "Waiting a bit to make sure the system is ready"
 # Check if MS Office is already installed
 Write-Log "Checking if MS Office is already installed"
 if (Test-Path "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE") {
-    Write-Log "MS Office is already installed. Exiting script."
+    Write-Log "MS Office is already installed. Ensuring success marker exists."
+    try {
+        New-Item -Path "C:\OEM\success" -ItemType File -Force | Out-Null
+        Write-Log "Success file created (already installed)."
+    } catch {
+        Write-Log "Failed to create success file."
+    }
+    Write-Log "Exiting script as Office is already installed."
     exit 0
 }
 

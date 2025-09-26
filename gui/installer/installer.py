@@ -169,6 +169,10 @@ class Wizard(QWidget):
             if clean_line.startswith("ERROR:"):
                 self.last_error_line = clean_line
 
+            # Detect retry prompt marker from setup.sh and show GUI dialog
+            if "PROMPT:VNC_SIGN_OUT_AND_RETRY" in clean_line:
+                self.show_vnc_retry_dialog()
+
             # increase progress bar
             match = re.search(r'^Step (\d+):', clean_line)
             if match:
@@ -245,6 +249,54 @@ class Wizard(QWidget):
         show_log_btn.clicked.connect(on_show_log)
         abort_btn.clicked.connect(on_abort)
 
+        dialog.exec()
+
+    def show_vnc_retry_dialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("RDP Connection Help")
+
+        layout = QVBoxLayout(dialog)
+        label = QLabel("""
+<b>We couldn't connect to Windows via RDP yet.</b><br><br>
+Let's try a potential fix:
+<ol>
+<li>Open your web browser and go to the address <code>127.0.0.1:8006</code>.</li>
+<li>Log in to the virtual machine using the password: <b>MyWindowsPassword</b>.</li>
+<li>In Windows, click Start (Windows logo), then click <b>MyWindowsUser</b> at the bottom-left, then click <b>Sign out</b>.</li>
+<li><b>Important:</b> Do <u>not</u> shut down the virtual machine. Only sign out.</li>
+</ol>
+After you've signed out, click <b>Try Again</b>.
+        """)
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        button_layout = QHBoxLayout()
+        try_again_btn = QPushButton("Try Again")
+        cancel_btn = QPushButton("Cancel")
+        button_layout.addWidget(try_again_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+
+        def on_try_again():
+            dialog.accept()
+            if self.process and self.process.state() == QProcess.Running:
+                try:
+                    self.process.write(b"Y\n")
+                    self.process.flush()
+                except Exception:
+                    pass
+
+        def on_cancel():
+            dialog.reject()
+            if self.process and self.process.state() == QProcess.Running:
+                try:
+                    self.process.write(b"n\n")
+                    self.process.flush()
+                except Exception:
+                    pass
+
+        try_again_btn.clicked.connect(on_try_again)
+        cancel_btn.clicked.connect(on_cancel)
         dialog.exec()
 
     def confirm_abort(self):

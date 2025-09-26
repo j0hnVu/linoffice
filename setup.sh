@@ -922,14 +922,19 @@ function check_available() {
     fi
     print_step "7" "Checking if everything is set up correctly"
     print_info "Checking if RDP server is available"
-    local max_attempts=30 
-    local reboot_threshold=15
+    local max_attempts=10 
+    local reboot_threshold=7
     local attempt=0
     local success=0
     local vm_rebooted=false
     
     if [ ! -e "$SUCCESS_FILE" ]; then
-        while [ $attempt -lt $max_attempts ]; do
+        while true; do
+            attempt=0
+            success=0
+            vm_rebooted=false
+            
+            while [ $attempt -lt $max_attempts ]; do
             attempt=$((attempt + 1))
 
             # First verify container is healthy
@@ -946,14 +951,13 @@ function check_available() {
             # Try to check if RDP is ready
             print_info "Testing RDP connection (attempt $attempt of $max_attempts)..."
             
-            # Use timeout to prevent hanging
-            # For now, credentials and IP/port are hardcoded for simplicity, make sure they match what is in the compose.yaml and linoffice.conf
-            echo "DEBUG: Using FreeRDP command: $FREERDP_COMMAND" >> "$LOGFILE"
-            local freerdp_output
+            # First, try the original minimal command (as it works on many systems) before applying variants
+            echo "DEBUG: Using FreeRDP command (minimal): $FREERDP_COMMAND" >> "$LOGFILE"
+            local minimal_output
             if [[ "$FREERDP_COMMAND" == flatpak* ]]; then
-                freerdp_output=$(timeout 30 bash -c "$FREERDP_COMMAND /cert:ignore /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:cmd.exe,cmd:'/c tsdiscon'" 2>&1)
+                minimal_output=$(timeout 30 bash -c "$FREERDP_COMMAND /cert:ignore /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:cmd.exe,cmd:'/c tsdiscon'" 2>&1)
             else
-                freerdp_output=$(timeout 30 "$FREERDP_COMMAND" \
+                minimal_output=$(timeout 30 "$FREERDP_COMMAND" \
                     /cert:ignore \
                     /u:MyWindowsUser \
                     /p:MyWindowsPassword \
@@ -962,18 +966,133 @@ function check_available() {
                     /app:program:cmd.exe,cmd:'/c tsdiscon' \
                     2>&1)
             fi
-            echo "DEBUG: FreeRDP output was:" >> "$LOGFILE"
-            echo "$freerdp_output" >> "$LOGFILE"
-            echo "DEBUG: FreeRDP exit code was: $freerdp_exit" >> "$LOGFILE"
-            local freerdp_exit=$?
-            
-            # Log the output regardless of success/failure
-            echo "$freerdp_output" >> "$LOGFILE"
+            local minimal_exit=$?
+            echo "DEBUG: FreeRDP (minimal) output was:" >> "$LOGFILE"
+            echo "$minimal_output" >> "$LOGFILE"
+            echo "DEBUG: FreeRDP (minimal) exit code was: $minimal_exit" >> "$LOGFILE"
 
-            # Check if the output contains ERRINFO_LOGOFF_BY_USER (i.e. cmd /c tsdiscon was successful)
-            if echo "$freerdp_output" | grep -q "ERRINFO_LOGOFF_BY_USER"; then
+            if echo "$minimal_output" | grep -q "ERRINFO_LOGOFF_BY_USER"; then
                 print_success "RDP server is available (user logoff detected)"
                 success=1
+                break
+            fi
+
+            # Minimal probe: try all three binaries in fixed order regardless of detected default
+            local candidates_minimal=("xfreerdp3" "flatpak run --command=xfreerdp com.freerdp.FreeRDP" "xfreerdp")
+
+            # Function to run a single probe variant (conservative flags) against a specific candidate
+            run_probe_variant() {
+                local candidate="$1"
+                local use_xvfb="$2" # "yes" or "no"
+                local display_backup="$DISPLAY"
+                local xvfb_pid=""
+                local env_prefix="XLIB_SKIP_ARGB_VISUALS=1 LIBGL_ALWAYS_SOFTWARE=1 GDK_BACKEND=x11 QT_QPA_PLATFORM=xcb"
+                local base_args="/cert:ignore /sec:rdp /gdi:sw /bpp:16 /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:cmd.exe,cmd:'/c tsdiscon'"
+
+                # Optional headless X fallback via Xvfb
+                if [ "$use_xvfb" = "yes" ]; then
+                    if command -v Xvfb >/dev/null 2>&1; then
+                        print_info "Using headless X fallback (Xvfb) for probe"
+                        Xvfb :99 -screen 0 1024x768x16 >/dev/null 2>&1 &
+                        xvfb_pid=$!
+                        export DISPLAY=:99
+                    else
+                        echo "DEBUG: Xvfb not available, skipping headless probe" >> "$LOGFILE"
+                    fi
+                fi
+
+                local output=""
+                local exitcode=0
+                echo "DEBUG: Using FreeRDP candidate: $candidate (xvfb=$use_xvfb)" >> "$LOGFILE"
+                if [[ "$candidate" == flatpak* ]]; then
+                    # Run via flatpak with env prefix
+                    output=$(timeout 30 bash -c "$env_prefix $candidate $base_args" 2>&1)
+                    exitcode=$?
+                elif [ "$candidate" = "xfreerdp3" ] || [ "$candidate" = "xfreerdp" ]; then
+                    output=$(timeout 30 env $env_prefix $candidate $base_args 2>&1)
+                    exitcode=$?
+                else
+                    output="Unsupported candidate: $candidate"
+                    exitcode=1
+                fi
+
+                # Restore DISPLAY and cleanup Xvfb
+                if [ -n "$xvfb_pid" ]; then
+                    kill "$xvfb_pid" >/dev/null 2>&1 || true
+                    wait "$xvfb_pid" 2>/dev/null || true
+                    export DISPLAY="$display_backup"
+                fi
+
+                echo "DEBUG: FreeRDP output was:" >> "$LOGFILE"
+                echo "$output" >> "$LOGFILE"
+                echo "DEBUG: FreeRDP exit code was: $exitcode" >> "$LOGFILE"
+
+                # Return via globals
+                FREERDP_LAST_OUTPUT="$output"
+                FREERDP_LAST_EXIT="$exitcode"
+            }
+
+            # Try minimal probe with all three candidates
+            if [ $success -ne 1 ]; then
+                for candidate in "${candidates_minimal[@]}"; do
+                    # Skip if candidate is not available on system
+                    if [[ "$candidate" == flatpak* ]]; then
+                        if ! command -v flatpak >/dev/null 2>&1 || ! flatpak list --columns=application | grep -q "^com.freerdp.FreeRDP$"; then
+                            continue
+                        fi
+                    else
+                        if ! command -v "$candidate" >/dev/null 2>&1; then
+                            continue
+                        fi
+                    fi
+                    echo "DEBUG: Trying minimal probe with candidate: $candidate" >> "$LOGFILE"
+                    local cand_output
+                    if [[ "$candidate" == flatpak* ]]; then
+                        cand_output=$(timeout 30 bash -c "$candidate /cert:ignore /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:cmd.exe,cmd:'/c tsdiscon'" 2>&1)
+                    else
+                        cand_output=$(timeout 30 $candidate \
+                            /cert:ignore \
+                            /u:MyWindowsUser \
+                            /p:MyWindowsPassword \
+                            /v:127.0.0.1 \
+                            /port:3388 \
+                            /app:program:cmd.exe,cmd:'/c tsdiscon' \
+                            2>&1)
+                    fi
+                    local cand_exit=$?
+                    echo "DEBUG: FreeRDP (minimal candidate) output was:" >> "$LOGFILE"
+                    echo "$cand_output" >> "$LOGFILE"
+                    echo "DEBUG: FreeRDP (minimal candidate) exit code was: $cand_exit" >> "$LOGFILE"
+                    if echo "$cand_output" | grep -q "ERRINFO_LOGOFF_BY_USER"; then
+                        print_success "RDP server is available (user logoff detected)"
+                        success=1
+                        break
+                    fi
+                done
+            fi
+
+            # If minimal did not succeed, try conservative variant with the originally detected command only
+            if [ $success -ne 1 ]; then
+                run_probe_variant "$FREERDP_COMMAND" "no"
+                local freerdp_output="$FREERDP_LAST_OUTPUT"
+                if echo "$freerdp_output" | grep -q "ERRINFO_LOGOFF_BY_USER"; then
+                    print_success "RDP server is available (user logoff detected)"
+                    success=1
+                fi
+            fi
+
+            # If still not successful, do a single headless attempt with the originally detected command
+            if [ $success -ne 1 ]; then
+                run_probe_variant "$FREERDP_COMMAND" "yes"
+                local freerdp_output="$FREERDP_LAST_OUTPUT"
+                if echo "$freerdp_output" | grep -q "ERRINFO_LOGOFF_BY_USER"; then
+                    print_success "RDP server is available (headless probe)"
+                    success=1
+                fi
+            fi
+
+            # If success was detected above, break out of attempt loop
+            if [ $success -eq 1 ]; then
                 break
             fi
 
@@ -1032,22 +1151,40 @@ function check_available() {
 
             # If unable to connect, try again
             if [ $attempt -lt $max_attempts ]; then
-                print_info "RDP server not ready yet, waiting 15 seconds..."
-                sleep 15
+                print_info "RDP server not ready yet, waiting 5 seconds..."
+                sleep 5
+            fi
+            
+            if [ $success -eq 1 ]; then
+                print_success "RDP server is available"
+                return 0
+            fi
+
+            # At this point we failed after max_attempts. Provide beginner-friendly guidance and offer retry.
+            print_error "Failed to connect to the Windows VM via RDP after $max_attempts attempts."
+            echo
+            print_info "What to do now:"
+            print_info "1) Open your web browser and go to: 127.0.0.1:8006"
+            print_info "2) You will see the virtual machine. Log in using the password: MyWindowsPassword"
+            print_info "3) In Windows, click Start (Windows logo), then click on 'MyWindowsUser' at the bottom-left, then click 'Sign out'."
+            print_info "   Important: Do NOT shut down or restart the virtual machine. Just sign out."
+            echo
+            print_info "After signing out, we can try the connection again."
+            echo
+            # Machine-readable marker so the GUI can show a dialog and answer the prompt
+            echo "PROMPT:VNC_SIGN_OUT_AND_RETRY"
+            # Interactive prompt for terminal users
+            local answer
+            read -r -p "Try again now? [Y/n]: " answer
+            answer=${answer:-Y}
+            if [[ "$answer" =~ ^[Yy]$ ]]; then
+                print_info "Okay, trying again..."
+                continue
+            else
+                print_error "User chose not to retry RDP connection."
+                return 1
             fi
         done
-
-        if [ $success -eq 1 ]; then
-            print_success "RDP server is available"
-            return 0
-        else
-            print_error "Failed to connect to RDP server after $max_attempts attempts. Container may still be starting up. Check $LOGFILE for details."
-            print_error "RDP server was not ready in time. This is common on the first run, as Windows may still be finishing setup in the background."
-            print_info "Please wait a minute or two, then run setup.sh again. It should continue from where it left off."
-            print_info "If you want to check progress, you can open 127.0.0.1:8006 in your browser to view the Windows VM via VNC."
-            print_info "Otherwise, possible fix: open 127.0.0.1:8006 in your web browser to access Windows via VNC, then log in using the password 'MyWindowsPassword', check if Office is installed (or if not check if a setup.exe is running in Task Manager and wait for the installation to complete), then log out again to make Windows ready to accept RDP connections (to log out: Start -> click on the account icon -> Sign out). Then run setup.sh again."
-            return 1
-        fi
     else
         print_success "Success file already exists"
         return 0
@@ -1064,7 +1201,8 @@ function check_success() {
     local elapsed_time=0
     local retry_count=0
     local max_retries=10
-    local connection_timeout=60 # 1 minute should be enough to run the FirstRDPRun.ps1 script
+    # Keep connection alive for the whole installation monitoring period; do not kill early
+    # local connection_timeout=60
     local check_interval=10  # Try again after 10 seconds
     local installation_timeout=1800 # 30 minutes timeout for Office download and installation
     
@@ -1081,19 +1219,19 @@ function check_success() {
     # Register cleanup function to run on script exit
     trap cleanup_freerdp EXIT
 
+    # Clear any existing success file once before attempting connections
+    rm -f "$SUCCESS_FILE"
+
     # Retry loop for FreeRDP connection
     while [ $retry_count -lt $max_retries ]; do
         retry_count=$((retry_count + 1))
         print_info "Starting FreeRDP connection to mount home directory (Attempt $retry_count of $max_retries)..."
         
-        # Clear any existing success file to ensure fresh check
-        rm -f "$SUCCESS_FILE"
-        
         # Start FreeRDP in the background with home-drive enabled
         if [[ "$FREERDP_COMMAND" == flatpak* ]]; then
-            timeout $connection_timeout bash -c "$FREERDP_COMMAND /cert:ignore +home-drive /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\FirstRDPRun.ps1'" >>"$LOGFILE" 2>&1 &
+            bash -c "$FREERDP_COMMAND /cert:ignore +home-drive /u:MyWindowsUser /p:MyWindowsPassword /v:127.0.0.1 /port:3388 /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\FirstRDPRun.ps1'" >>"$LOGFILE" 2>&1 &
         else
-            timeout $connection_timeout "$FREERDP_COMMAND" \
+            "$FREERDP_COMMAND" \
                 /cert:ignore \
                 +home-drive \
                 /u:MyWindowsUser \

@@ -43,13 +43,17 @@ try {
             Write-Log "QuickAccess.ps1 timed out after $timeoutSeconds seconds"
         }
 
-        # Wait for C:\OEM\success to exist
-        Write-Log "Checking for C:\OEM\success..."
-        while (-not (Test-Path "C:\OEM\success")) {
-            Write-Log "C:\OEM\success not found, waiting..."
+        # Determine installation status: either success marker exists or Office binaries are present
+        Write-Log "Checking for C:\OEM\success or installed Office binaries..."
+        while (-not (Test-Path "C:\OEM\success") -and -not (Test-Path "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE")) {
+            Write-Log "No success marker yet and Office not detected, waiting..."
             Start-Sleep -Seconds 5
         }
-        Write-Log "C:\OEM\success found, proceeding..."
+        if (Test-Path "C:\OEM\success") {
+            Write-Log "C:\OEM\success found, proceeding..."
+        } elseif (Test-Path "C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE") {
+            Write-Log "Office binaries detected; proceeding to create Linux-side success marker."
+        }
 
         # Create success file with current time in \\tsclient\home 
         Write-Log "Creating success file with current time in \\tsclient\home\.local\share\linoffice\success..."
