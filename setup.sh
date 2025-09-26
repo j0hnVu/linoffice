@@ -735,6 +735,15 @@ function create_container() {
 
     # Start podman-compose in the background with unbuffered output and strip ANSI codes
     print_info "Starting podman-compose in detached mode..."
+	# If the compose file doesn't exist yet, initialize it from the default template
+	if [ ! -f "$COMPOSE_FILE" ]; then
+		if [ -f "$COMPOSE_FILE.default" ]; then
+			print_info "Creating $COMPOSE_FILE from default template"
+			cp "$COMPOSE_FILE.default" "$COMPOSE_FILE" || exit_with_error "Failed to copy $COMPOSE_FILE.default to $COMPOSE_FILE"
+		else
+			exit_with_error "Compose file missing: $COMPOSE_FILE and $COMPOSE_FILE.default not found"
+		fi
+	fi
     if ! $COMPOSE_COMMAND --file "$COMPOSE_FILE" up -d >>"$LOGFILE" 2>&1; then
         exit_with_error "Failed to start containers. Check $LOGFILE for details."
     fi
@@ -1184,6 +1193,7 @@ function check_available() {
                 print_error "User chose not to retry RDP connection."
                 return 1
             fi
+        done
         done
     else
         print_success "Success file already exists"

@@ -13,7 +13,7 @@ function Monitor-File {
             # Check if file exists
             if (Test-Path -Path $filePath) {
                 # Run time resync silently
-                w32tm /resync /quiet
+                w32tm /resync
                 
                 # Remove the file
                 Remove-Item -Path $filePath -Force
