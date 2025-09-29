@@ -24,15 +24,6 @@ Windows Registry Editor Version 5.00
     [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\TimeZoneInformation]
     "RealTimeIsUniversal"=dword:00000001
 
-    ; Enable automatic updates for Windows (reboot at 3 am if needed)
-    [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update]
-    "AUOptions"=dword:00000004
-    "NoAutoUpdate"=dword:00000000
-    "ScheduledInstallDay"=dword:00000000
-    "ScheduledInstallTime"=dword:00000003
-    "AutoInstallMinorUpdates"=dword:00000001
-    "IncludeRecommendedUpdates"=dword:00000001
-
     ; Allow long file paths
     [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem]
     "LongPathsEnabled"=dword:00000001
