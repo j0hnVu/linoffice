@@ -746,7 +746,6 @@ function waRunCommand() {
         printf "\033[1m./linoffice.sh manual [explorer.exe|regedit.exe|powershell.exe|cmd.exe]\033[0m -> runs a specific Windows app in the Windows PATH\n"
         printf "\033[1m./linoffice.sh manual \"C:\\\\Program Files\\\\Microsoft Office\\\\root\\\\Office16\\\\SETLANG.EXE\"\033[0m -> like above, but for any application (here: Microsoft Office Language Preferences tool)\n"
         printf "\033[1m./linoffice.sh windows\033[0m -> shows the whole Windows desktop in an RDP session\n"
-        printf "\033[1m./linoffice.sh update\033[0m -> runs an update script for Windows in Powershell\n"
         printf "\033[1m./linoffice.sh reset\033[0m -> kills all FreeRDP processes, cleans up Office lock files, and reboots the Windows VM\n"
         printf "\033[1m./linoffice.sh cleanup [--full|--reset]\033[0m -> cleans up Office lock files (such as ~\$file.xlsx) in the home folder and removable media; --full cleans all files regardless of creation date, --reset resets the last cleanup timestamp\n"
         printf "\033[1m./linoffice.sh --startcontainer\033[0m -> will start the Windows container if it is not running and not execute anything else\n"
@@ -818,25 +817,6 @@ function waRunCommand() {
 
         # Capture the process ID.
         FREERDP_PID=$!   
-
-    elif [ "$1" = "update" ]; then
-        # Run the script
-        dprint "UPDATE"
-        podman unshare --rootless-netns "$FREERDP_COMMAND" \
-            /u:$RDP_USER \
-            /p:$RDP_PASS \
-            /scale:$RDP_SCALE \
-            +auto-reconnect \
-            +home-drive \
-            +clipboard \
-            -wallpaper \
-            $RDP_KBD \
-            $RDP_FLAGS \
-            /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\UpdateWindows.ps1' \
-            /v:"$RDP_IP:$RDP_PORT" &>/dev/null &
-    
-        # Capture the process ID.
-        FREERDP_PID=$!  
 
     # This function is not meant to be used by the user. It executes a script to update the registry for international settings if the settings have been changed in the LinOffice GUI
     elif [ "$1" = "registry_override" ]; then
