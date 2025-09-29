@@ -1,0 +1,4 @@
+NAME="EVKey"
+FULL_NAME="EVKey"
+EXE="C:\Program Files\EVKey\EVKey64.exe"
+CATEGORIES="Tools"

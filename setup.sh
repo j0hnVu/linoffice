@@ -39,6 +39,7 @@ DESKTOP_ONLY=false
 FIRSTRUN=false
 INSTALL_OFFICE_ONLY=false
 HEALTHCHECK=false
+INSTALL_EVKEY_ONLY=false
 
 # Colors for output
 RED='\033[0;31m'
@@ -150,6 +151,9 @@ while [[ $# -gt 0 ]]; do
         --healthcheck)
             HEALTHCHECK=true
             shift
+            ;;
+        --installevkey)
+            INSTALL_EVKEY_ONLY=true
             ;;            
         --help)
             print_usage
@@ -1470,6 +1474,45 @@ run_install_office_ps1() {
     fi
 }
 
+run_install_evkey_ps1() {
+    if [ -z "$FREERDP_COMMAND" ]; then
+        detect_freerdp_command
+    fi
+
+    print_info "Running EVKey installation script via FreeRDP..."
+
+    # Build FreeRDP command wrapper (handles flatpak vs system install)
+    local freerdp_cmd
+    if [[ "$FREERDP_COMMAND" == flatpak* ]]; then
+        freerdp_cmd=(bash -c "$FREERDP_COMMAND")
+    else
+        freerdp_cmd=("$FREERDP_COMMAND")
+    fi
+
+    # Connection timeout in milliseconds (e.g. 10000 = 10 seconds)
+    local connection_timeout=10000
+
+    # Run FreeRDP with connection timeout only (script keeps running after connect)
+    "${freerdp_cmd[@]}" \
+        /cert:ignore \
+        +home-drive \
+        /u:MyWindowsUser \
+        /p:MyWindowsPassword \
+        /v:127.0.0.1 \
+        /port:3388 \
+        /timeout:$connection_timeout \
+        /app:program:powershell.exe,cmd:'-ExecutionPolicy Bypass -File C:\\OEM\\InstallEVKey.ps1' \
+        >>"$LOGFILE" 2>&1
+
+    local exit_code=$?
+    if [ $exit_code -eq 0 ]; then
+        print_success "EVKey installation script executed successfully via FreeRDP."
+        return 0
+    else
+        print_error "FreeRDP failed to run EVKey installation script (exit code: $exit_code)"
+        return 1
+    fi
+}
 
 # Main logic
 # If --healthcheck flag is set, only run these tests without writing to progress file
@@ -1494,6 +1537,17 @@ if [ "$INSTALL_OFFICE_ONLY" = true ]; then
         print_success "Office installation script executed successfully!"
     else
         exit_with_error "Failed to run Office installation script via FreeRDP."
+    fi
+    exit 0
+fi
+
+# If --installevkey flag is set, run InstallEVKey.ps1 via FreeRDP
+if [ "$INSTALL_EVKEY_ONLY" = true ]; then
+    print_info "Running InstallEVKey.ps1 via FreeRDP (--installevkey mode)..."
+    if run_install_evkey_ps1; then
+        print_success "EVKey installation script executed successfully!"
+    else
+        exit_with_error "Failed to run EVKey installation script via FreeRDP."
     fi
     exit 0
 fi
